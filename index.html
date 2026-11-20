@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hudler Homes Shoot Planner</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Shoot Planner">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<style>
+/*
+VOICE: quiet, editorial, a creative director's notebook. Black ink on white, nothing decorative.
+IDEA: a printed shot sheet / contact sheet you carry on set.
+PICTURE: the reference photographs themselves, large, edge to edge.
+COLOUR and TYPE: pure white ground, near-black ink, one grey; Compass Serif titles, Compass Sans everything else (loaded in Settings).
+LAYOUT: single calm column on iPhone, controls in the thumb zone; wider grid for planning on desktop.
+*/
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#0c0c0c);--ink:light-dark(#111111,#f1f1f1);--mute:light-dark(#6d6d6d,#9b9b9b);
+--line:light-dark(#e4e4e4,#2a2a2a);--soft:light-dark(#f4f4f4,#171717);
+--serif:"Compass Serif",ui-serif,Georgia,"Times New Roman",serif;
+--sans:"Compass Sans",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--sans);overflow-x:clip}
+h1,h2,h3{font-family:var(--serif);font-weight:400;line-height:1.08;margin:0;text-wrap:balance}
+h1{font-size:clamp(32px,6vw,46px)}h2{font-size:clamp(24px,4vw,30px)}h3{font-size:20px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:6px max(4vw,12px)}
+.brand{font-family:var(--serif);font-size:18px;margin-right:auto;white-space:nowrap;background:none;border:0;padding:8px 0;min-height:44px}
+.brand small{font-family:var(--sans);font-size:13px;color:var(--mute);margin-left:6px}
+.nav{background:none;border:0;min-height:44px;padding:0 10px;font-size:15px;color:var(--mute)}
+.nav[aria-current=true]{color:var(--ink);text-decoration:underline;text-underline-offset:6px}
+main{max-width:1080px;margin:0 auto;padding:28px max(4vw,16px) 120px}
+.mute{color:var(--mute)}.small{font-size:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{min-height:44px;padding:0 16px;border:1px solid var(--ink);background:transparent;border-radius:2px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;white-space:nowrap}
+.btn.solid{background:var(--ink);color:var(--bg)}
+.btn.ghost{border-color:var(--line)}
+.btn.big{min-height:56px;font-size:17px;width:100%}
+.btn:disabled{opacity:.35}
+.ic{width:44px;height:44px;border:1px solid var(--line);background:transparent;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;padding:0}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin:28px 0 24px;overflow-x:auto}
+.tab{background:none;border:0;min-height:48px;padding:0 16px 0 0;margin-right:16px;font-size:16px;color:var(--mute);border-bottom:2px solid transparent;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--ink);border-color:var(--ink)}
+.card{border-top:1px solid var(--line);padding:20px 0}
+.shoots .card{display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;align-items:center;cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left;padding:18px 0}
+.thumb{aspect-ratio:4/5;background:var(--soft);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:13px;text-align:center}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.bar{height:3px;background:var(--line);margin-top:10px}.bar i{display:block;height:100%;background:var(--ink)}
+.loc{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;border-top:1px solid var(--line);padding:22px 0}
+.num{font-family:var(--serif);font-size:34px;line-height:1}
+.facts{margin:10px 0 12px;display:grid;gap:4px;font-size:15px}
+.facts b{font-weight:400;color:var(--mute);display:inline-block;min-width:68px}
+.spots{margin:4px 0 6px;border-left:1px solid var(--line);padding-left:14px;display:grid;gap:12px}
+.spot-h b{font-weight:400;font-family:var(--serif);font-size:18px}
+.spot .btn{min-height:38px;font-size:14px;padding:0 12px}
+.ctrl{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.setup{margin:18px 0 8px;padding-top:14px;border-top:1px dashed var(--line)}
+.setup-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.setup-h h3{margin-right:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:20px;margin-top:14px}
+.shot{display:flex;flex-direction:column;gap:8px}
+.shot .thumb{cursor:pointer;position:relative}
+.shot .thumb .count{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.7);color:#fff;font-size:12px;padding:2px 7px}
+.shot h4{font:400 18px/1.2 var(--serif);margin:2px 0 0}
+.tag{font-size:12px;letter-spacing:.02em;border:1px solid var(--line);padding:2px 8px;white-space:nowrap;display:inline-block}
+.tag.must{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tag.done{border-color:var(--ink)}
+.stat{font-size:13px;color:var(--mute)}
+.drop{border:1.5px dashed var(--mute);aspect-ratio:4/5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--mute);font-size:14px;cursor:pointer;background:transparent;width:100%;padding:12px;text-align:center}
+.locgroup{margin-bottom:40px}
+.locgroup>h2{padding-top:16px;border-top:2px solid var(--ink)}
+.empty{padding:40px 0;color:var(--mute)}
+/* checklist */
+.check{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid var(--line);cursor:pointer}
+.check input{width:24px;height:24px;margin:0;accent-color:var(--ink);flex:none}
+.check span{flex:1}.check.done span{text-decoration:line-through;color:var(--mute)}
+.check small{display:block;color:var(--mute);font-size:13px;text-decoration:none}
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.scrim.open{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:92vh;overflow:auto;padding:22px max(4vw,18px) 28px;border-radius:12px 12px 0 0}
+@media(min-width:700px){.scrim{align-items:center}.sheet{border-radius:4px}}
+.sheet h2{margin-bottom:16px}
+label.f{display:block;margin:14px 0 0;font-size:14px;color:var(--mute)}
+.f input:not([type=checkbox]):not([type=radio]),.f textarea,.f select{display:block;width:100%;margin-top:6px;font-size:16px;padding:11px 12px;border:1px solid var(--line);background:var(--bg);border-radius:2px;color:var(--ink)}
+.f textarea{min-height:76px;resize:vertical}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.seg label{position:relative}
+.seg input{position:absolute;opacity:0;inset:0}
+.seg span{display:inline-flex;align-items:center;min-height:42px;padding:0 14px;border:1px solid var(--line);font-size:15px;color:var(--ink)}
+.seg input:checked+span{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg input:focus-visible+span{outline:2px solid var(--ink);outline-offset:2px}
+.imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px}
+.imgs figure{margin:0;position:relative}
+.imgs .thumb{aspect-ratio:1}
+.imgs .x{position:absolute;top:4px;right:4px;width:32px;height:32px;border:0;background:rgba(0,0,0,.7);color:#fff;border-radius:2px}
+.imgs .mv{position:absolute;bottom:4px;left:4px;width:32px;height:32px;border:0;background:rgba(0,0,0,.7);color:#fff;border-radius:2px}
+.imgs .drop{aspect-ratio:1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;position:sticky;bottom:-28px;background:var(--bg);padding:12px 0 4px}
+.actions .grow{margin-left:auto}
+/* shoot mode */
+.mode{position:fixed;inset:0;background:#000;color:#f2f2f2;z-index:40;display:none;flex-direction:column}
+.mode.open{display:flex}
+.mtop{display:flex;align-items:center;gap:8px;padding:8px 10px 4px}
+.mtop .where{flex:1;font-size:13px;line-height:1.3;color:#aaa;overflow:hidden}
+.mtop .where b{display:block;color:#f2f2f2;font-weight:400;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mode .ic{border-color:#333;color:#f2f2f2}
+.mode .ic[aria-pressed=true]{background:#f2f2f2;color:#000}
+.mprog{display:flex;gap:10px;align-items:center;padding:0 12px 8px;font-size:12px;color:#aaa}
+.mprog .bar{flex:1;margin:0;background:#333}.mprog .bar i{background:#f2f2f2}
+.mimg{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
+.mimg img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.mimg .more{position:absolute;right:12px;bottom:12px;background:rgba(0,0,0,.7);border:1px solid #444;color:#fff;font-size:13px;padding:4px 10px}
+.mimg .none{color:#888;text-align:center;padding:20px}
+.mimg .none .btn{border-color:#888;color:#f2f2f2;margin-top:12px}
+.minfo{padding:12px 16px 4px}
+.minfo h2{font-size:26px;color:#fff}
+.minfo p{margin:6px 0 0;font-size:17px;line-height:1.4;color:#ddd}
+.minfo .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.minfo .tag{border-color:#444;color:#ccc}.minfo .tag.must{background:#f2f2f2;color:#000;border-color:#f2f2f2}
+.minfo .snum{font-size:12px;color:#999;margin-bottom:2px}
+.minfo p.cap{font-size:15px;color:#bbb;margin-top:6px}
+.minfo details{margin-top:6px;color:#bbb;font-size:15px}.minfo summary{min-height:36px;display:flex;align-items:center;color:#999}
+.statusline{margin:8px 16px 0;padding:8px 12px;border:1px solid #444;display:flex;align-items:center;gap:10px;font-size:15px}
+.statusline button{margin-left:auto;background:none;border:0;color:#fff;text-decoration:underline;min-height:36px}
+.mbot{display:grid;grid-template-columns:64px 1fr 1fr 64px;gap:8px;padding:10px 12px max(14px,env(safe-area-inset-bottom))}
+.mbot button{min-height:60px;border:1px solid #444;background:#111;color:#f2f2f2;font-size:17px;border-radius:2px}
+.mbot .done{background:#f2f2f2;color:#000;border-color:#f2f2f2}
+.mbot button:disabled{opacity:.3}
+/* lightbox */
+.lb{position:fixed;inset:0;background:#000;z-index:60;display:none}
+.lb.open{display:block}
+.lbtrack{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.lbtrack::-webkit-scrollbar{display:none}
+.lbtrack div{flex:0 0 100%;height:100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center}
+.lbtrack img{max-width:100%;max-height:100%;object-fit:contain}
+.lb .ic{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);border-color:#444;color:#fff;z-index:2}
+.lb .cnt{position:absolute;top:22px;left:16px;color:#ccc;font-size:14px;z-index:2}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 14px;z-index:80;display:none;align-items:center;gap:14px;font-size:15px;max-width:92vw;border-radius:2px}
+.toast.open{display:flex}
+.toast button{background:none;border:0;color:inherit;text-decoration:underline;min-height:36px;font-size:15px}
+.mode~.toast,.toast.dark{background:#f2f2f2;color:#000}
+.search{width:100%;font-size:17px;padding:12px 14px;border:1px solid var(--ink);border-radius:2px;background:var(--bg);margin:18px 0 6px}
+.note{background:var(--soft);padding:14px 16px;font-size:15px;margin:14px 0}
+.sample{font-size:13px;color:var(--mute);border:1px solid var(--line);display:inline-block;padding:3px 8px;margin-bottom:10px}
+/* iPhone notch / home indicator when running full-screen */
+.top{padding-top:max(6px,env(safe-area-inset-top));padding-left:max(4vw,12px,env(safe-area-inset-left));padding-right:max(4vw,12px,env(safe-area-inset-right))}
+.mtop{padding-top:max(8px,env(safe-area-inset-top))}
+.lb .ic{top:calc(10px + env(safe-area-inset-top))}.lb .cnt{top:calc(22px + env(safe-area-inset-top))}
+.toast{bottom:calc(24px + env(safe-area-inset-bottom))}
+.sheet{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+main{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
+@media(max-width:600px){.shoots .card{grid-template-columns:76px minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.shot h4{font-size:16px}.brand small{display:none}}
+@media(prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(16px);opacity:.6}}}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="brand" data-act="go" data-view="home">Hudler Homes <small>Shoot Planner</small></button>
+  <button class="nav" data-act="go" data-view="home" id="nav-home">Shoots</button>
+  <button class="nav" data-act="go" data-view="library" id="nav-library">Library</button>
+  <button class="nav" data-act="go" data-view="settings" id="nav-settings">Settings</button>
+</header>
+<main id="app"><p class="mute">Loading…</p></main>
+<div class="scrim" id="scrim"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<section class="mode" id="mode" aria-label="Shoot mode"></section>
+<div class="lb" id="lb"><button class="ic" data-act="lb-close" aria-label="Close">✕</button><div class="cnt" id="lbcnt"></div><div class="lbtrack" id="lbtrack"></div></div>
+<div class="toast" id="toast"><span id="toastmsg"></span><button id="toastbtn" hidden>Undo</button></div>
+<input type="file" id="pick" accept="image/*" multiple hidden>
+<input type="file" id="pickzip" accept=".zip,application/zip" hidden>
+<input type="file" id="pickfont" accept=".otf,.ttf,.woff,.woff2,font/*" hidden>
+<script>
+{
+/* ---------- storage (IndexedDB on this device/browser) ---------- */
+const DBN='hudler-shoot-planner';let dbp=null;
+function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open(DBN,1);r.onupgradeneeded=()=>{const d=r.result;for(const s of['kv','images','fonts'])if(!d.objectStoreNames.contains(s))d.createObjectStore(s)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+async function tx(store,mode,fn){const d=await db();return new Promise((res,rej)=>{const t=d.transaction(store,mode);const s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})}
+const iget=(s,k)=>tx(s,'readonly',st=>st.get(k));
+const iput=(s,k,v)=>tx(s,'readwrite',st=>st.put(v,k));
+const idel=(s,k)=>tx(s,'readwrite',st=>st.delete(k));
+const ikeys=s=>tx(s,'readonly',st=>st.getAllKeys());
+const iclear=s=>tx(s,'readwrite',st=>st.clear());
+
+const STANDALONE=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+let OFFLINE_OK=false;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const norm=s=>String(s).trim().toLowerCase().replace(/\s+/g,' ');
+
+let S={shoots:[],library:[],locLib:[]};
+let ui={view:'home',shootId:null,tab:'plan'};
+let saveT=null,storageOK=true;
+function save(){clearTimeout(saveT);saveT=setTimeout(flush,250)}
+async function flush(){clearTimeout(saveT);try{await iput('kv','state',S);await iput('kv','ui',ui);storageOK=true}catch(e){storageOK=false;toast('Could not save on this device: '+(e.message||e))}}
+
+/* ---------- images ---------- */
+const urls=new Map();
+async function addImages(files){const ids=[];for(const f of files){const id=uid();const buf=await f.arrayBuffer();await iput('images',id,{buf,type:f.type||'image/jpeg',name:f.name||'image',size:f.size,added:Date.now()});ids.push(id)}
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}return ids}
+async function imgURL(id){if(urls.has(id))return urls.get(id);const r=await iget('images',id);if(!r)return null;const u=URL.createObjectURL(new Blob([r.buf],{type:r.type}));urls.set(id,u);return u}
+function hydrate(root=document){for(const el of root.querySelectorAll('img[data-img]:not([src])')){imgURL(el.dataset.img).then(u=>{if(u)el.src=u;else el.alt='Image missing'})}}
+const img=(id,cls='')=>id?`<img data-img="${esc(id)}" alt="" class="${cls}" decoding="async">`:'';
+function pickImages(){return new Promise(res=>{const p=$('#pick');p.value='';p.onchange=async()=>{const f=[...p.files];res(f.length?await addImages(f):[])};p.click()})}
+async function gcImages(){const keep=new Set();for(const sh of S.shoots)for(const t of allShots(sh))t.images.forEach(i=>keep.add(i));for(const p of S.library)p.images.forEach(i=>keep.add(i));for(const l of S.locLib)for(const st of l.setups)for(const t of st.shots)t.images.forEach(i=>keep.add(i));for(const k of await ikeys('images'))if(!keep.has(k)){await idel('images',k);urls.delete(k)}}
+
+/* ---------- model helpers ---------- */
+const blankShot=()=>({id:uid(),title:'New shot',images:[],prompt:'',dist:['medium'],orient:'vertical',variations:'',props:[],outfit:'',priority:'must',status:'todo'});
+const shoot=()=>S.shoots.find(s=>s.id===ui.shootId);
+function allShots(sh){const o=[];for(const l of sh.locations)for(const st of l.setups)for(const t of st.shots)o.push(t);return o}
+function seq(sh){const o=[];for(const l of sh.locations)for(const st of l.setups)for(const t of st.shots)o.push({t,l,st});return o}
+function findShot(sh,id){for(const l of sh.locations)for(const st of l.setups){const i=st.shots.findIndex(t=>t.id===id);if(i>-1)return{l,st,t:st.shots[i],i}}return null}
+function findSetup(sh,id){for(const l of sh.locations){const i=l.setups.findIndex(s=>s.id===id);if(i>-1)return{l,st:l.setups[i],i}}return null}
+function prog(list){const n=list.length,d=list.filter(t=>t.status!=='todo').length;return{n,d,pct:n?Math.round(d/n*100):0}}
+function move(arr,i,dir){const j=i+dir;if(j<0||j>=arr.length)return false;[arr[i],arr[j]]=[arr[j],arr[i]];return true}
+const PRI={must:'Must-have',optional:'Optional',creative:'Creative'};
+const fmtDate=d=>{if(!d)return'';const x=new Date(d+'T12:00');return isNaN(x)?d:x.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'})};
+const framing=t=>[...(t.dist||[])].map(x=>x[0].toUpperCase()+x.slice(1)).join(' / ')+(t.orient?' · '+(t.orient==='both'?'Vertical + horizontal':t.orient[0].toUpperCase()+t.orient.slice(1)):'');
+const maps=a=>`<a class="btn ghost" href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" rel="noopener">Apple Maps</a><a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a)}" target="_blank" rel="noopener">Google Maps</a>`;
+
+function sample(){const sh=(title,dist,orient,priority,prompt,props=[],extra={})=>({...blankShot(),title,dist,orient,priority,prompt,props,...extra});
+ return{id:uid(),sample:true,name:'Sample shoot — Agent lifestyle & listing',agent:'Sample agent',date:'',notes:'Sample content to try the tool. Edit or delete it anytime. Warm, natural, approachable; keep wardrobe neutral so the homes read first.',currentShotId:null,packed:{},extras:[{id:uid(),text:'Lint roller'},{id:uid(),text:'Reflector'}],
+ locations:[
+ {id:uid(),name:'Residential listing — interior',address:'Listing address, Baltimore, MD',parking:'Confirm driveway or street parking with the agent',time:'45 min',outfit:'Outfit 1 — neutral knit, tailored trousers',setups:[
+  {id:uid(),name:'Living room sofa',shots:[sh('Seated portrait',['medium'],'both','must','Sit forward on the sofa edge, forearms on knees, hands loosely together. Chin slightly down, eyes to lens.',['Neutral throw pillow','Coffee table book'],{variations:'Try one with hands apart, one with a small smile vs. a full laugh.'}),
+   sh('Lean-back laugh',['wide'],'horizontal','creative','Lean into the corner, one arm along the sofa back. Look off-camera and laugh at something I say.',['Neutral throw pillow'])]},
+  {id:uid(),name:'Kitchen island',shots:[sh('Island lean with coffee',['medium','close'],'vertical','must','Both forearms on the island, mug in hands, weight on one hip. Soft smile to lens.',['White ceramic mug','Fresh flowers'])]}]},
+ {id:uid(),name:'Baltimore street — rowhomes',address:'Thames St, Fells Point, Baltimore, MD',parking:'Metered street parking; check posted time limits',time:'40 min',outfit:'Outfit 2 — camel coat, dark denim',setups:[
+  {id:uid(),name:'Front stoop',shots:[sh('Stoop welcome',['wide'],'both','must','Stand one step up, keys in hand, body angled to the street, shoulders turned back to lens.',['House keys on a ring'])]},
+  {id:uid(),name:'Brick sidewalk',shots:[sh('Walking toward camera',['wide'],'vertical','optional','Walk slowly toward me along the brick. Look down, then up at the lens on my count.',['Leather portfolio'])]}]},
+ {id:uid(),name:'Waterfront park',address:'Canton Waterfront Park, Baltimore, MD',parking:'Park lot; arrive early on weekends',time:'35 min',outfit:'Outfit 3 — light blazer, white tee',setups:[
+  {id:uid(),name:'Railing by the water',shots:[sh('Over-the-shoulder at railing',['close'],'vertical','must','Forearms on the railing, turn your face back to me over your shoulder. Relax your jaw.'),
+   sh('Golden-hour candid',['wide'],'horizontal','creative','Look out at the water, then back at me. Keep moving; wind in hair is fine.',['Leather portfolio'])]}]}]}}
+
+/* ---------- views ---------- */
+function setNav(){for(const v of['home','library','settings'])$('#nav-'+v).setAttribute('aria-current',String(ui.view===v||(v==='home'&&ui.view==='shoot')))}
+function render(){setNav();const a=$('#app');
+ a.innerHTML=ui.view==='shoot'&&shoot()?vShoot():ui.view==='library'?vLibrary():ui.view==='settings'?vSettings():vHome();
+ hydrate(a);if(ui.view==='settings')fillStorage()}
+
+function vHome(){const list=S.shoots.map(sh=>{const p=prog(allShots(sh));const first=allShots(sh).find(t=>t.images.length);
+ return`<button class="card" data-act="open" data-id="${sh.id}"><div class="thumb">${first?img(first.images[0]):'No photos yet'}</div><div>${sh.sample?'<span class="sample">Sample</span>':''}<h2>${esc(sh.name)}</h2><div class="mute small">${esc([sh.agent,fmtDate(sh.date)].filter(Boolean).join(' · '))}</div><div class="small" style="margin-top:6px">${sh.locations.length} locations · ${p.d}/${p.n} shots done</div><div class="bar"><i style="width:${p.pct}%"></i></div></div></button>`}).join('');
+ return`<div class="row" style="justify-content:space-between;margin-bottom:18px"><h1>Shoots</h1><button class="btn solid" data-act="new-shoot">New shoot</button></div><div class="shoots">${list||'<p class="empty">No shoots yet. Create one to start planning.</p>'}</div>`}
+
+function vShoot(){const sh=shoot();const p=prog(allShots(sh));const cur=sh.currentShotId&&findShot(sh,sh.currentShotId);
+ const tabs=[['plan','Itinerary'],['shots','Shot list'],['pack','Packing']].map(([k,l])=>`<button class="tab" role="tab" aria-selected="${ui.tab===k}" data-act="tab" data-tab="${k}">${l}</button>`).join('');
+ return`${sh.sample?'<span class="sample">Sample shoot — replace with your own</span>':''}<h1>${esc(sh.name)}</h1>
+ <div class="mute" style="margin-top:8px">${esc([sh.agent,fmtDate(sh.date)].filter(Boolean).join(' · '))||'No agent or date yet'}</div>
+ ${sh.notes?`<p style="max-width:62ch">${esc(sh.notes)}</p>`:''}
+ <div class="row" style="margin-top:16px"><button class="btn ghost" data-act="edit-shoot">Edit details</button><button class="btn ghost" data-act="pdf">Export PDF</button><button class="btn ghost" data-act="dup-shoot">Duplicate</button><button class="btn ghost" data-act="del-shoot">Delete</button></div>
+ <div style="margin-top:22px;max-width:520px"><button class="btn solid big" data-act="mode" ${p.n?'':'disabled'}>${cur?'Resume shoot mode — '+esc(cur.t.title):'Start shoot mode'}</button>
+ <div class="small mute" style="margin-top:8px">${p.d} of ${p.n} shots done or skipped</div><div class="bar"><i style="width:${p.pct}%"></i></div></div>
+ <div class="tabs" role="tablist">${tabs}</div>${ui.tab==='shots'?vShots(sh):ui.tab==='pack'?vPack(sh):vPlan(sh)}`}
+
+function vPlan(sh){const L=sh.locations;const r=routeURL(sh);
+ return(r?`<a class="btn solid" href="${esc(r)}" target="_blank" rel="noopener" style="margin-bottom:18px">Full route in Google Maps · ${L.filter(l=>l.address).length} stops</a>`:'')+(L.map((l,i)=>{const shots=l.setups.flatMap(s=>s.shots);const p=prog(shots);
+ return`<div class="loc"><div class="num">${i+1}</div><div><h2>${esc(l.name)}</h2>
+ <div class="facts">${l.address?`<div><b>Address</b> ${esc(l.address)}</div>`:''}${l.parking?`<div><b>Parking</b> ${esc(l.parking)}</div>`:''}${l.time?`<div><b>Time</b> ${esc(l.time)}</div>`:''}${l.outfit?`<div><b>Outfit</b> ${esc(l.outfit)}</div>`:''}<div><b>Shots</b> ${p.d}/${p.n} done</div></div>
+ <div class="row">${l.address?maps(l.address):''}</div>
+ ${l.setups.length?`<div class="spots">${l.setups.map((st,si)=>`<div class="spot"><div class="spot-h"><span class="mute">${String.fromCharCode(97+si)}.</span> <b>${esc(st.name)}</b>${st.time?` <span class="mute small">· ${esc(st.time)}</span>`:''} <span class="mute small">· ${st.shots.length} shot${st.shots.length===1?'':'s'}</span></div>${st.address?`<div class="small">${esc(st.address)}</div>`:''}${st.note?`<div class="small mute">${esc(st.note)}</div>`:''}${st.address?`<div class="row" style="margin-top:6px">${maps(st.address)}</div>`:''}</div>`).join('')}</div>`:''}
+ <div class="ctrl"><button class="ic" data-act="loc-up" data-id="${l.id}" aria-label="Move up" ${i?'':'disabled'}>↑</button><button class="ic" data-act="loc-down" data-id="${l.id}" aria-label="Move down" ${i<L.length-1?'':'disabled'}>↓</button><button class="btn ghost" data-act="edit-loc" data-id="${l.id}">Edit</button><button class="btn ghost" data-act="add-setup" data-id="${l.id}">Add spot</button><button class="btn ghost" data-act="save-loc" data-id="${l.id}">${l.savedId&&S.locLib.some(x=>x.id===l.savedId)?'Update in library':'Save to library'}</button><button class="btn ghost" data-act="del-loc" data-id="${l.id}">Remove</button></div></div></div>`}).join('')||'<p class="empty">No locations yet. Add a new one, or pull in a location you’ve saved before.</p>')+
+ `<div class="row" style="margin-top:12px"><button class="btn" data-act="add-loc">Add location</button><button class="btn ghost" data-act="from-loclib">Add saved location</button></div>`}
+
+function shotCard(t,st,i,n){return`<div class="shot"><div class="thumb" data-act="${t.images.length?'lb-shot':'upload-shot'}" data-id="${t.id}">${t.images.length?img(t.images[0])+(t.images.length>1?`<span class="count">${t.images.length} refs</span>`:''):'<span>＋<br>Add reference photos</span>'}</div>
+ <div class="row" style="gap:6px"><span class="tag ${t.priority==='must'?'must':''}">${PRI[t.priority]}</span>${t.status!=='todo'?`<span class="tag done">${t.status==='done'?'Done':'Skipped'}</span>`:''}</div>
+ <h4>${esc(t.title)}</h4><div class="stat">Shot ${n} · ${esc(framing(t))}</div>${t.prompt?`<div class="small">${esc(t.prompt)}</div>`:''}${t.variations?`<div class="small mute">Capture: ${esc(t.variations)}</div>`:''}
+ <div class="ctrl"><button class="ic" data-act="shot-up" data-id="${t.id}" aria-label="Move earlier" ${i?'':'disabled'}>↑</button><button class="ic" data-act="shot-down" data-id="${t.id}" aria-label="Move later" ${i<st.shots.length-1?'':'disabled'}>↓</button><button class="btn ghost" data-act="edit-shot" data-id="${t.id}">Edit</button></div></div>`}
+
+function vShots(sh){if(!sh.locations.length)return'<p class="empty">Add a location on the Itinerary tab first.</p>';const num=new Map(seq(sh).map((x,i)=>[x.t.id,i+1]));
+ return sh.locations.map((l,li)=>`<section class="locgroup"><h2>${li+1}. ${esc(l.name)}</h2>${l.setups.map((st,si)=>`<div class="setup"><div class="setup-h"><h3>${esc(st.name)}</h3>
+ <button class="ic" data-act="setup-up" data-id="${st.id}" aria-label="Move setup up" ${si?'':'disabled'}>↑</button><button class="ic" data-act="setup-down" data-id="${st.id}" aria-label="Move setup down" ${si<l.setups.length-1?'':'disabled'}>↓</button><button class="btn ghost" data-act="edit-setup" data-id="${st.id}">Edit</button></div>
+ ${st.address||st.note||st.time?`<div class="small mute" style="margin-top:4px">${esc([st.address,st.time,st.note].filter(Boolean).join(' · '))}</div>`:''}
+ <div class="grid">${st.shots.map((t,i)=>shotCard(t,st,i,num.get(t.id))).join('')}</div>
+ <div class="row" style="margin-top:14px"><button class="btn" data-act="add-shot" data-id="${st.id}">Add shot</button><button class="btn ghost" data-act="from-lib" data-id="${st.id}">Add from library</button></div></div>`).join('')}
+ <button class="btn ghost" data-act="add-setup" data-id="${l.id}" style="margin-top:16px">Add spot to ${esc(l.name)}</button></section>`).join('')}
+
+function packLists(sh){const props=new Map(),ward=new Map();
+ for(const{t,l}of seq(sh)){if(t.status==='skipped')continue;for(const p of t.props){const k=norm(p);if(!k)continue;if(!props.has(k))props.set(k,{text:p.trim(),from:[]});props.get(k).from.push(t.title)}
+  if(t.outfit){const k=norm(t.outfit);if(!ward.has(k))ward.set(k,{text:t.outfit,from:[]});ward.get(k).from.push(t.title)}}
+ for(const l of sh.locations)if(l.outfit){const k=norm(l.outfit);if(!ward.has(k))ward.set(k,{text:l.outfit,from:[]});ward.get(k).from.push(l.name)}
+ return{props,ward}}
+function vPack(sh){const{props,ward}=packLists(sh);
+ const item=(key,text,sub)=>{const on=!!sh.packed[key];return`<label class="check ${on?'done':''}"><input type="checkbox" data-act="pack" data-key="${esc(key)}" ${on?'checked':''}><span>${esc(text)}${sub?`<small>${esc(sub)}</small>`:''}</span></label>`};
+ const all=[...props.keys()].map(k=>'p:'+k).concat([...ward.keys()].map(k=>'w:'+k),sh.extras.map(e=>'x:'+e.id));const packed=all.filter(k=>sh.packed[k]).length;
+ return`<p class="mute small">${packed} of ${all.length} packed. Props and outfits are gathered from your shots and locations automatically, without duplicates. Skipped shots are left out.</p>
+ <h2 style="margin-top:20px">Props</h2>${[...props].map(([k,v])=>item('p:'+k,v.text,'For '+[...new Set(v.from)].join(', '))).join('')||'<p class="mute">No props listed on shots yet.</p>'}
+ <h2 style="margin-top:28px">Wardrobe</h2>${[...ward].map(([k,v])=>item('w:'+k,v.text,[...new Set(v.from)].join(', '))).join('')||'<p class="mute">No outfits listed yet.</p>'}
+ <h2 style="margin-top:28px">Extra items</h2>${sh.extras.map(e=>`<div class="row" style="flex-wrap:nowrap">${item('x:'+e.id,e.text).replace('<label class="check','<label style="flex:1" class="check')}<button class="ic" data-act="del-extra" data-id="${e.id}" aria-label="Remove item">✕</button></div>`).join('')}
+ <form id="extraform" class="row" style="margin-top:12px;flex-wrap:nowrap"><input id="extratext" placeholder="Add an item" style="flex:1;font-size:16px;padding:11px 12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"><button class="btn solid">Add</button></form>
+ <button class="btn ghost" data-act="unpack" style="margin-top:18px">Uncheck all</button>`}
+
+let libQ='',libTarget=null,libTab='poses';
+function copyLoc(l,id){const c=clone(l);c.id=id||uid();delete c.savedId;for(const st of c.setups){st.id=uid();for(const t of st.shots){t.id=uid();t.status='todo'}}return c}
+function locText(l){return[l.name,l.address,l.parking,l.outfit,...l.setups.flatMap(s=>[s.name,s.address,s.note,...s.shots.map(t=>t.title)])].join(' ')}
+function vLibrary(){const tabs=[['poses',`Poses (${S.library.length})`],['locations',`Locations (${S.locLib.length})`]].map(([k,l])=>`<button class="tab" role="tab" aria-selected="${libTab===k}" data-act="lib-tab" data-tab="${k}">${l}</button>`).join('');
+ return libTab==='locations'?vLocLib(tabs):vPoseLib(tabs)}
+function vLocLib(tabs){const q=norm(libQ);const list=S.locLib.filter(l=>!q||norm(locText(l)).includes(q));
+ const tgt=libTarget&&libTarget.kind==='loc'&&S.shoots.find(s=>s.id===libTarget.shootId);
+ return`${tgt?`<div class="note">Adding locations to <b>${esc(tgt.name)}</b>. Each one comes in with all its spots, shots and reference photos as the shoot’s own copy, with every shot set to to-do. <button class="btn ghost" data-act="lib-done" style="margin-top:8px">Done, back to shoot</button></div>`:''}
+ <h1>Library</h1><div class="tabs" role="tablist" style="margin-top:18px">${tabs}</div>
+ <input class="search" id="libq" type="search" placeholder="Search locations, spots, shots" value="${esc(libQ)}" style="margin-top:0">
+ <div class="mute small">${list.length} of ${S.locLib.length} saved locations</div>
+ ${list.map(l=>{const shots=l.setups.flatMap(s=>s.shots);const first=shots.find(t=>t.images.length);return`<div class="shoots"><div class="card" style="cursor:default"><div class="thumb">${first?img(first.images[0]):'No photos'}</div><div><h2>${esc(l.name)}</h2>${l.address?`<div class="small">${esc(l.address)}</div>`:''}
+ <div class="small mute" style="margin-top:4px">${l.setups.length} spot${l.setups.length===1?'':'s'} · ${shots.length} shot${shots.length===1?'':'s'}${l.setups.length?' — '+esc(l.setups.map(s=>s.name).join(', ')):''}</div>
+ <div class="ctrl">${tgt?`<button class="btn solid" data-act="lib-add-loc" data-id="${l.id}">Add to shoot</button>`:''}<button class="btn ghost" data-act="edit-saved-loc" data-id="${l.id}">Details</button></div></div></div></div>`}).join('')}
+ ${S.locLib.length?'':'<p class="empty">No saved locations yet. In any shoot’s itinerary, tap “Save to library” on a location. It’s saved with all its spots, shots and reference photos, ready to drop into future shoots.</p>'}`}
+function vPoseLib(tabs){const q=norm(libQ);const list=S.library.filter(p=>!q||norm([p.title,p.prompt,p.tags,p.props.join(' '),p.variations,p.outfit].join(' ')).includes(q));
+ const tgt=libTarget&&libTarget.kind!=='loc'&&S.shoots.find(s=>s.id===libTarget.shootId);const tsu=tgt&&findSetup(tgt,libTarget.setupId);
+ return`${tsu?`<div class="note">Adding to <b>${esc(tgt.name)}</b> → ${esc(tsu.l.name)} → ${esc(tsu.st.name)}. Tap “Add to shoot” on any pose. The shoot gets its own copy, so edits there won’t change the library. <button class="btn ghost" data-act="lib-done" style="margin-top:8px">Done, back to shoot</button></div>`:''}
+ <div class="row" style="justify-content:space-between"><h1>Library</h1><div class="row"><button class="btn" data-act="bulk-poses">Add many photos</button><button class="btn solid" data-act="new-pose">New pose</button></div></div>
+ <div class="tabs" role="tablist" style="margin-top:18px">${tabs}</div>
+ <input class="search" id="libq" type="search" placeholder="Search poses, prompts, tags, props" value="${esc(libQ)}" style="margin-top:0">
+ <div class="mute small">${list.length} of ${S.library.length} poses</div>
+ <div class="grid">${list.map(p=>`<div class="shot"><div class="thumb" data-act="${p.images.length?'lb-pose':'edit-pose'}" data-id="${p.id}">${p.images.length?img(p.images[0])+(p.images.length>1?`<span class="count">${p.images.length} refs</span>`:''):'<span>No photo</span>'}</div><h4>${esc(p.title)}</h4><div class="stat">${esc(framing(p))}${p.tags?' · '+esc(p.tags):''}</div>
+ <div class="ctrl">${tsu?`<button class="btn solid" data-act="lib-add" data-id="${p.id}">Add to shoot</button>`:''}<button class="btn ghost" data-act="edit-pose" data-id="${p.id}">Edit</button></div></div>`).join('')}</div>
+ ${S.library.length?'':'<p class="empty">Your library is empty. Create a pose here, or open any shot and choose “Save to library”.</p>'}`}
+
+function vSettings(){return`<h1>Settings & data</h1>
+ <h2 style="margin-top:28px">Fonts</h2><p class="mute small">The Compass fonts aren’t included. Load your own font files below. They’re stored in this browser only and are used everywhere in the tool. Until then, titles use your device’s standard serif and body text uses the system sans.</p>
+ ${[['serif','Compass Serif (titles)'],['sans','Compass Sans — regular'],['sansb','Compass Sans — medium/bold (optional)']].map(([k,l])=>`<div class="check" style="cursor:default"><span>${l}<small id="font-${k}">Checking…</small></span><button class="btn ghost" data-act="font" data-role="${k}">Load file</button><button class="ic" data-act="font-del" data-role="${k}" aria-label="Remove font">✕</button></div>`).join('')}
+ <h2 style="margin-top:32px">Backup & restore</h2>
+ <p class="small">A backup is one <b>.zip</b> file that holds every shoot, library pose, shot order and checklist state, plus all your reference photos as the original files you uploaded. Restoring replaces everything currently in this browser. Fonts aren’t included in backups.</p>
+ <div class="row"><button class="btn solid" data-act="export">Download backup (.zip)</button><button class="btn" data-act="import">Restore from backup</button></div>
+ <h2 style="margin-top:32px">Where your data lives</h2>
+ ${STANDALONE?`<div class="note small">You’re using the <b>Home Screen app</b>. Everything is saved <b>on this iPhone, inside this app</b>. It isn’t uploaded or synced, and it’s separate from anything you saved in Safari or in Claude. iPhone doesn’t clear it for going unused the way it can with Safari websites. <b>Deleting the app’s icon from your Home Screen deletes its data</b>, so keep recent backups in Files.<br><br>
+ ${OFFLINE_OK?'The app opens and works with no signal once it’s been opened online once. Map links still need a signal.':'Offline support isn’t active yet. Open the app once with a signal, then close and reopen it.'}</div>`
+ :`<div class="note small">Everything is saved <b>on this device, in this browser</b>. It isn’t uploaded or synced. Each phone, computer and browser keeps its own separate copy. To move work between them, download a backup on one and restore it on the other.<br><br>
+ The browser can clear this data. Clearing website data does it, and so can iPhone Safari after weeks without a visit. Download a backup after each planning session and before each shoot.${OFFLINE_OK?' This page works offline once it has loaded.':''}</div>
+ <div class="note small"><b>Install as an iPhone app:</b> open this tool’s own web address in <b>Safari</b> (it doesn’t work inside the Claude app), tap <b>Share</b> → <b>Add to Home Screen</b>, then open it from the new icon. That copy keeps its data more reliably and works with no signal. It starts empty, so move your work over with Download backup here → Restore there.</div>`}
+ <div class="small" id="storageinfo">Checking storage…</div>
+ <h2 style="margin-top:32px">Sample content</h2><div class="row"><button class="btn ghost" data-act="add-sample">Add the sample shoot again</button></div>`}
+
+async function fillStorage(){const el=$('#storageinfo');if(!el)return;let t=storageOK?'Saving is working.':'Saving failed on this device.';
+ try{if(navigator.storage?.estimate){const e=await navigator.storage.estimate();t+=` Using about ${(e.usage/1048576).toFixed(1)} MB${e.quota?` of roughly ${(e.quota/1048576/1024).toFixed(1)} GB available to this site`:''}.`}
+  if(navigator.storage?.persisted){t+=(await navigator.storage.persisted())?' The browser has marked this storage as persistent.':' The browser hasn’t granted persistent storage, so backups matter.'}}catch(e){}
+ const n=(await ikeys('images')).length;el.textContent=t+` ${n} reference photo${n===1?'':'s'} stored.`;
+ for(const k of['serif','sans','sansb']){const f=await iget('fonts',k);const s=$('#font-'+k);if(s)s.textContent=f?'Loaded: '+f.name:'Not loaded'}}
+
+/* ---------- sheet (editor) ---------- */
+let sheetClose=null;
+function openSheet(html,onClose){$('#sheet').innerHTML=html;$('#scrim').classList.add('open');sheetClose=onClose||null;hydrate($('#sheet'));const f=$('#sheet input,#sheet textarea');if(f&&matchMedia('(min-width:700px)').matches)f.focus()}
+function closeSheet(){$('#scrim').classList.remove('open');$('#sheet').innerHTML='';const c=sheetClose;sheetClose=null;c&&c()}
+function ask(msg,ok='Confirm'){return new Promise(res=>{openSheet(`<h2>${esc(msg)}</h2><div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button><button class="btn solid grow" id="askok">${esc(ok)}</button></div>`,()=>res(false));$('#askok').onclick=()=>{sheetClose=null;closeSheet();res(true)}})}
+const fld=(id,label,val,type='text')=>`<label class="f">${label}${type==='area'?`<textarea id="${id}">${esc(val)}</textarea>`:`<input id="${id}" type="${type}" value="${esc(val)}">`}</label>`;
+const v=id=>$('#'+id)?.value.trim()??'';
+
+function editShoot(sh,isNew){openSheet(`<h2>${isNew?'New shoot':'Shoot details'}</h2>${fld('f-name','Shoot name',sh.name)}${fld('f-agent','Agent / participant',sh.agent)}${fld('f-date','Date',sh.date,'date')}${fld('f-notes','Brief notes',sh.notes,'area')}
+ <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button><button class="btn solid grow" id="ok">Save</button></div>`);
+ $('#ok').onclick=()=>{sh.name=v('f-name')||'Untitled shoot';sh.agent=v('f-agent');sh.date=v('f-date');sh.notes=v('f-notes');if(isNew){S.shoots.unshift(sh);ui.shootId=sh.id;ui.view='shoot';ui.tab='plan'}sh.sample=sh.sample&&!isNew?sh.sample:sh.sample;closeSheet();save();render()}}
+
+function editLoc(l,isNew){const sh=shoot();openSheet(`<h2>${isNew?'New location':'Location'}</h2>${fld('f-name','Name',l.name)}${fld('f-addr','Address (used for map links)',l.address)}${fld('f-park','Parking notes',l.parking)}${fld('f-time','Estimated time',l.time)}${fld('f-out','Outfit',l.outfit)}
+ <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button><button class="btn solid grow" id="ok">Save</button></div>`);
+ $('#ok').onclick=()=>{l.name=v('f-name')||'Location';l.address=v('f-addr');l.parking=v('f-park');l.time=v('f-time');l.outfit=v('f-out');if(isNew){l.setups.push({id:uid(),name:'Setup 1',shots:[]});sh.locations.push(l)}closeSheet();save();render()}}
+
+function editSetup(found,isNew,loc){const sh=shoot();const st=found?found.st:{id:uid(),name:'',shots:[]};
+ openSheet(`<h2>${isNew?'New setup / spot':'Setup / spot'}</h2>${fld('f-name','Name (e.g. Thames St pier, Living room sofa)',st.name)}
+ ${fld('f-saddr','Spot address or landmark (optional — adds map links)',st.address||'')}${fld('f-stime','Estimated time (optional)',st.time||'')}${fld('f-snote','Spot note (optional — e.g. behind the bike rack, face east)',st.note||'','area')}
+ <label class="f">Location<select id="f-loc">${sh.locations.map(l=>`<option value="${l.id}" ${l.id===(found?found.l.id:loc.id)?'selected':''}>${esc(l.name)}</option>`).join('')}</select></label>
+ <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button>${isNew?'':`<button class="btn ghost" id="del">Remove setup</button>`}<button class="btn solid grow" id="ok">Save</button></div>`);
+ $('#ok').onclick=()=>{st.name=v('f-name')||'Setup';st.address=v('f-saddr');st.time=v('f-stime');st.note=v('f-snote');const to=sh.locations.find(l=>l.id===$('#f-loc').value);
+  if(found&&to!==found.l){found.l.setups.splice(found.i,1);to.setups.push(st)}else if(isNew)to.setups.push(st);closeSheet();save();render()};
+ if(!isNew)$('#del').onclick=async()=>{const n=st.shots.length;if(await ask(`Remove “${st.name}”${n?` and its ${n} shot${n>1?'s':''}`:''}?`,'Remove')){found.l.setups.splice(found.i,1);save();render();gcImages()}}}
+
+function shotForm(t,kind){let imgs=[...t.images];const sh=shoot();
+ const draw=()=>{$('#f-imgs').innerHTML=imgs.map((id,i)=>`<figure><div class="thumb">${img(id)}</div><button type="button" class="x" data-i="${i}" aria-label="Remove photo">✕</button>${i?`<button type="button" class="mv" data-i="${i}" aria-label="Move photo earlier">←</button>`:''}</figure>`).join('')+`<button type="button" class="drop" id="f-add">＋<br>Add photos</button>`;hydrate($('#f-imgs'));
+  $('#f-add').onclick=async()=>{imgs.push(...await pickImages());draw()};
+  for(const b of $('#f-imgs').querySelectorAll('.x'))b.onclick=()=>{imgs.splice(+b.dataset.i,1);draw()};
+  for(const b of $('#f-imgs').querySelectorAll('.mv'))b.onclick=()=>{move(imgs,+b.dataset.i,-1);draw()}};
+ const segs=(name,opts,cur,multi)=>`<div class="seg">${opts.map(([k,l])=>`<label><input type="${multi?'checkbox':'radio'}" name="${name}" value="${k}" ${(multi?cur.includes(k):cur===k)?'checked':''}><span>${l}</span></label>`).join('')}</div>`;
+ const loc=kind==='shot'&&findShot(sh,t.id);
+ const setupSel=kind==='shot'?`<label class="f">Setup<select id="f-setup">${sh.locations.map(l=>`<optgroup label="${esc(l.name)}">${l.setups.map(s=>`<option value="${s.id}" ${loc&&loc.st.id===s.id||(!loc&&s.id===t._setup)?'selected':''}>${esc(s.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>`:'';
+ const html=`<h2>${kind==='pose'?'Library pose':'Shot'}</h2>${fld('f-title','Title',t.title)}
+ <div class="f" style="margin-top:14px;font-size:14px;color:var(--mute)">Reference photos (first one is shown largest)</div><div class="imgs" id="f-imgs"></div>
+ ${fld('f-prompt','Posing prompt (short and practical)',t.prompt,'area')}
+ <div class="f" style="margin-top:14px;font-size:14px;color:var(--mute)">Framing</div>${segs('dist',[['close','Close'],['medium','Medium'],['wide','Wide']],t.dist||[],true)}
+ ${segs('orient',[['vertical','Vertical'],['horizontal','Horizontal'],['both','Both']],t.orient)}
+ <div class="f" style="margin-top:14px;font-size:14px;color:var(--mute)">Priority</div>${segs('pri',[['must','Must-have'],['optional','Optional'],['creative','Creative']],t.priority)}
+ ${fld('f-var','Variations (optional)',t.variations,'area')}${fld('f-props','Props — one per line or comma-separated',t.props.join('\n'),'area')}${fld('f-outfit','Outfit notes (optional)',t.outfit)}
+ ${kind==='pose'?fld('f-tags','Tags (for search, e.g. seated, kitchen, couple)',t.tags||''):''}${setupSel}
+ ${t.libraryId?'<p class="mute small">Added from the library. Changes here affect this shoot only.</p>':''}
+ <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button>${t._new?'':`<button class="btn ghost" id="del">Delete</button>`}${kind==='shot'?`<button class="btn ghost" id="tolib">Save to library</button>`:''}<button class="btn solid grow" id="ok">Save</button></div>`;
+ openSheet(html);draw();
+ const read=()=>({title:v('f-title')||'Untitled',images:[...imgs],prompt:v('f-prompt'),dist:[...document.querySelectorAll('[name=dist]:checked')].map(x=>x.value),orient:$('[name=orient]:checked')?.value||'',priority:$('[name=pri]:checked')?.value||'optional',
+  variations:v('f-var'),props:v('f-props').split(/[\n,]/).map(s=>s.trim()).filter(Boolean),outfit:v('f-outfit'),...(kind==='pose'?{tags:v('f-tags')}:{})});
+ return{read,imgs:()=>imgs}}
+
+function editShot(t,setupId){const sh=shoot();const isNew=!!t._new;const f=shotForm(t,'shot');
+ $('#ok').onclick=()=>{Object.assign(t,f.read());delete t._new;delete t._setup;const to=findSetup(sh,$('#f-setup').value);const cur=findShot(sh,t.id);
+  if(!cur)to.st.shots.push(t);else if(cur.st!==to.st){cur.st.shots.splice(cur.i,1);to.st.shots.push(t)}closeSheet();save();render();gcImages()};
+ $('#tolib').onclick=()=>{const d=f.read();S.library.unshift({id:uid(),tags:'',...d});save();toast('Saved a copy to the library')};
+ if(!isNew)$('#del').onclick=async()=>{if(await ask(`Delete “${t.title}”?`,'Delete')){const c=findShot(sh,t.id);c.st.shots.splice(c.i,1);if(sh.currentShotId===t.id)sh.currentShotId=null;save();render();gcImages()}}}
+
+function editPose(p){const isNew=!!p._new;const f=shotForm(p,'pose');
+ $('#ok').onclick=()=>{Object.assign(p,f.read());delete p._new;if(isNew)S.library.unshift(p);closeSheet();save();render();gcImages()};
+ if(!isNew)$('#del').onclick=async()=>{if(await ask(`Delete “${p.title}” from the library? Shoots that use it keep their own copy.`,'Delete')){S.library=S.library.filter(x=>x.id!==p.id);save();render();gcImages()}}}
+
+function editSavedLoc(l){openSheet(`<h2>Saved location</h2>${fld('f-name','Name',l.name)}${fld('f-addr','Address',l.address)}${fld('f-park','Parking notes',l.parking)}${fld('f-time','Estimated time',l.time)}${fld('f-out','Outfit',l.outfit)}
+ <div class="f" style="margin-top:16px;font-size:14px;color:var(--mute)">Spots and shots</div>${l.setups.map(st=>`<div class="check" style="cursor:default"><span>${esc(st.name)}<small>${esc([st.address,st.shots.map(t=>t.title).join(', ')].filter(Boolean).join(' · '))||'No shots'}</small></span></div>`).join('')||'<p class="mute small">No spots.</p>'}
+ <p class="mute small">To change spots or shots, add this location to a shoot, edit it there, then tap “Update in library” on its itinerary card.</p>
+ <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button><button class="btn ghost" id="del">Delete</button><button class="btn solid grow" id="ok">Save</button></div>`);
+ $('#ok').onclick=()=>{l.name=v('f-name')||'Location';l.address=v('f-addr');l.parking=v('f-park');l.time=v('f-time');l.outfit=v('f-out');closeSheet();save();render()};
+ $('#del').onclick=async()=>{if(await ask(`Delete “${l.name}” from the library? Shoots that already use it keep their own copy.`,'Delete')){S.locLib=S.locLib.filter(x=>x!==l);save();render();gcImages()}}}
+function saveLocToLib(l){const ex=l.savedId&&S.locLib.find(x=>x.id===l.savedId);
+ const asNew=()=>{const c=copyLoc(l);S.locLib.unshift(c);l.savedId=c.id;save();render();toast(`Saved “${l.name}” to the library`)};
+ if(!ex)return asNew();
+ openSheet(`<h2>“${esc(l.name)}” is already in your library</h2><p>Update the saved version with this shoot’s spots and shots, or keep both by saving a separate copy?</p>
+ <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button><button class="btn ghost" id="asnew">Save as new</button><button class="btn solid grow" id="upd">Update saved</button></div>`);
+ $('#asnew').onclick=()=>{sheetClose=null;closeSheet();asNew()};
+ $('#upd').onclick=()=>{const i=S.locLib.indexOf(ex);S.locLib[i]=copyLoc(l,ex.id);sheetClose=null;closeSheet();save();render();gcImages();toast('Library location updated')}}
+
+/* ---------- shoot mode ---------- */
+let M={mustOnly:false};
+function modeList(sh){const all=seq(sh);return M.mustOnly?all.filter(x=>(x.t.priority==='must'&&x.t.status==='todo')||x.t.id===sh.currentShotId):all}
+function openMode(){const sh=shoot();const all=seq(sh);if(!all.length)return;if(!sh.currentShotId||!findShot(sh,sh.currentShotId)){const n=all.find(x=>x.t.status==='todo')||all[0];sh.currentShotId=n.t.id}
+ $('#mode').classList.add('open');document.body.style.overflow='hidden';drawMode();save()}
+function closeMode(){$('#mode').classList.remove('open');document.body.style.overflow='';render()}
+function drawMode(){const sh=shoot();const list=modeList(sh);let i=list.findIndex(x=>x.t.id===sh.currentShotId);
+ if(i<0){if(!list.length){$('#mode').innerHTML=`<div class="mtop"><button class="ic" data-act="mode-close" aria-label="Close shoot mode">✕</button><div class="where"><b>All must-haves are done</b></div><button class="ic" data-act="mode-filter" aria-pressed="true" aria-label="Show all shots">★</button></div><div class="mimg"><div class="none">No must-have shots left.<br><button class="btn" data-act="mode-filter">Show all shots</button></div></div>`;return}i=0;sh.currentShotId=list[0].t.id}
+ const{t,l,st}=list[i];const allS=allShots(sh),P=prog(allS),LP=prog(l.setups.flatMap(s=>s.shots));
+ const left=allS.filter(x=>x.priority==='must'&&x.status==='todo').length;
+ $('#mode').innerHTML=`<div class="mtop"><button class="ic" data-act="mode-close" aria-label="Close shoot mode">✕</button><div class="where"><b>${esc(l.name)}</b>${esc(st.name)}</div>
+ <button class="ic" data-act="mode-list" aria-label="All shots and progress">☰</button><button class="ic" data-act="mode-filter" aria-pressed="${M.mustOnly}" aria-label="Show only remaining must-haves" title="Remaining must-haves">★</button></div>
+ <div class="mprog"><span>This location ${LP.d}/${LP.n}</span><div class="bar"><i style="width:${P.pct}%"></i></div><span>Shoot ${P.d}/${P.n}</span></div>
+ <div class="mimg" id="mimg" ${t.images.length?'data-act="lb-mode"':''}>${t.images.length?img(t.images[0])+(t.images.length>1?`<span class="more">1 of ${t.images.length} · tap</span>`:''):`<div class="none">No reference photo yet<br><button class="btn" data-act="upload-shot" data-id="${t.id}">Add photos</button></div>`}</div>
+ <div class="minfo"><div class="snum">Shot ${seq(sh).findIndex(x=>x.t.id===t.id)+1} of ${allS.length}</div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}${t.variations?`<p class="cap">Capture: ${esc(t.variations)}</p>`:''}<div class="tags"><span class="tag ${t.priority==='must'?'must':''}">${PRI[t.priority]}</span>${framing(t)?`<span class="tag">${esc(framing(t))}</span>`:''}${M.mustOnly?`<span class="tag">${left} must-haves left</span>`:''}</div>
+ ${t.props.length||t.outfit?`<details><summary>Props, outfit</summary>${t.props.length?`<div>Props: ${esc(t.props.join(', '))}</div>`:''}${t.outfit?`<div>Outfit: ${esc(t.outfit)}</div>`:''}</details>`:''}</div>
+ ${t.status!=='todo'?`<div class="statusline">${t.status==='done'?'✓ Marked done':'Skipped'}<button data-act="mode-reset">Undo</button></div>`:''}
+ <div class="mbot"><button data-act="mode-prev" aria-label="Previous shot" ${i?'':'disabled'}>‹</button><button data-act="mode-skip">Skip</button><button class="done" data-act="mode-done">Done ✓</button><button data-act="mode-next" aria-label="Next shot" ${i<list.length-1?'':'disabled'}>›</button></div>`;
+ hydrate($('#mode'));swipe($('#mimg'),d=>modeStep(d))}
+function modeStep(d){const sh=shoot();const list=modeList(sh);const i=list.findIndex(x=>x.t.id===sh.currentShotId);const n=list[i+d];if(n){sh.currentShotId=n.t.id;save();drawMode()}}
+function mark(status){const sh=shoot();const t=findShot(sh,sh.currentShotId)?.t;if(!t)return;const prev=t.status,id=t.id;t.status=status;
+ const all=seq(sh);const i=all.findIndex(x=>x.t.id===id);const nxt=all.slice(i+1).find(x=>x.t.status==='todo'&&(!M.mustOnly||x.t.priority==='must'))||all.find(x=>x.t.status==='todo'&&(!M.mustOnly||x.t.priority==='must'));
+ if(nxt)sh.currentShotId=nxt.t.id;save();drawMode();
+ toast(`${status==='done'?'Done':'Skipped'}: ${t.title}`,()=>{t.status=prev;sh.currentShotId=id;save();drawMode()},true)}
+function modeListSheet(){const sh=shoot();const cur=findShot(sh,sh.currentShotId);const where=cur&&(cur.st.address||cur.l.address);
+ openSheet(`<h2>Shots & progress</h2>${cur?`<div class="note"><b>Now: ${esc(cur.l.name)} → ${esc(cur.st.name)}</b>${where?`<div class="small">${esc(where)}</div><div class="row" style="margin-top:8px">${maps(where)}</div>`:''}${cur.st.note?`<div class="small mute" style="margin-top:6px">${esc(cur.st.note)}</div>`:''}</div>`:''}${sh.locations.map(l=>{const P=prog(l.setups.flatMap(s=>s.shots));return`<h3 style="margin-top:18px">${esc(l.name)} <span class="mute small">${P.d}/${P.n}</span></h3>${l.setups.map(st=>`<div class="small mute" style="margin-top:10px">${esc(st.name)}${st.address?' · '+esc(st.address):''}</div>`+st.shots.map(t=>`<button class="check" style="width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;align-items:center" data-act="mode-jump" data-id="${t.id}"><span>${t.id===sh.currentShotId?'→ ':''}${esc(t.title)}<small>${esc(st.name)} · ${PRI[t.priority]}</small></span><span class="tag ${t.status==='done'?'done':''}" style="flex:none">${t.status==='todo'?'To do':t.status==='done'?'Done':'Skipped'}</span></button>`).join('')).join('')}`}).join('')}<div class="actions"><button class="btn solid grow" data-act="sheet-cancel">Close</button></div>`)}
+function swipe(el,fn){if(!el)return;let x0=null,y0=0,moved=false;el.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;moved=false},{passive:true});
+ el.addEventListener('touchmove',e=>{if(x0!==null&&Math.abs(e.touches[0].clientX-x0)>12)moved=true},{passive:true});
+ el.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){el.dataset.swiped='1';fn(dx<0?1:-1)}});}
+
+/* ---------- lightbox ---------- */
+function lightbox(ids,start=0){const tr=$('#lbtrack');tr.innerHTML=ids.map(id=>`<div>${img(id)}</div>`).join('');hydrate(tr);$('#lb').classList.add('open');
+ const upd=()=>{$('#lbcnt').textContent=ids.length>1?`${Math.round(tr.scrollLeft/tr.clientWidth)+1} of ${ids.length} · swipe`:''};tr.onscroll=upd;requestAnimationFrame(()=>{tr.scrollLeft=start*tr.clientWidth;upd()})}
+
+/* ---------- toast ---------- */
+let toastT=null;
+function toast(msg,undo,dark){$('#toastmsg').textContent=msg;const b=$('#toastbtn');b.hidden=!undo;b.onclick=()=>{undo();$('#toast').classList.remove('open')};
+ const el=$('#toast');el.classList.toggle('dark',!!dark);el.classList.add('open');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('open'),undo?6000:2600)}
+
+/* ---------- zip backup (stored, uncompressed: photos are already compressed) ---------- */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+function makeZip(files){const parts=[],cen=[];let off=0;const enc=new TextEncoder();
+ for(const f of files){const name=enc.encode(f.name),d=f.data,crc=crc32(d);const h=new DataView(new ArrayBuffer(30));
+  h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);h.setUint32(14,crc,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);h.setUint16(26,name.length,true);
+  parts.push(h.buffer,name,d);const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint32(16,crc,true);c.setUint32(20,d.length,true);c.setUint32(24,d.length,true);c.setUint16(28,name.length,true);c.setUint32(42,off,true);
+  cen.push(c.buffer,name);off+=30+name.length+d.length}
+ const cs=cen.reduce((a,b)=>a+b.byteLength,0);const e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
+ return new Blob([...parts,...cen,e.buffer],{type:'application/zip'})}
+function readZip(buf){const dv=new DataView(buf);let p=buf.byteLength-22;while(p>=0&&dv.getUint32(p,true)!==0x06054b50)p--;if(p<0)throw new Error('Not a zip file');
+ const n=dv.getUint16(p+10,true);let c=dv.getUint32(p+16,true);const out={};const dec=new TextDecoder();
+ for(let i=0;i<n;i++){if(dv.getUint32(c,true)!==0x02014b50)throw new Error('Damaged zip');const meth=dv.getUint16(c+10,true),size=dv.getUint32(c+20,true),nl=dv.getUint16(c+28,true),xl=dv.getUint16(c+30,true),cl=dv.getUint16(c+32,true),lo=dv.getUint32(c+42,true);
+  const name=dec.decode(new Uint8Array(buf,c+46,nl));if(meth!==0)throw new Error('This zip was re-compressed by another app. Use the original backup file.');
+  const ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true);out[name]=new Uint8Array(buf,ds,size);c+=46+nl+xl+cl}return out}
+const extOf=t=>({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif','image/gif':'gif'}[t]||'img');
+async function buildBackup(){await flush();const files=[],meta=[];for(const id of await ikeys('images')){const r=await iget('images',id);const file=`images/${id}.${extOf(r.type)}`;meta.push({id,file,type:r.type,name:r.name});files.push({name:file,data:new Uint8Array(r.buf)})}
+ files.unshift({name:'data.json',data:new TextEncoder().encode(JSON.stringify({app:'hudler-shoot-planner',version:1,exported:new Date().toISOString(),state:S,images:meta},null,1))});return makeZip(files)}
+async function restoreBackup(buf){const z=readZip(buf);if(!z['data.json'])throw new Error('This zip isn’t a Shoot Planner backup');const d=JSON.parse(new TextDecoder().decode(z['data.json']));if(d.app!=='hudler-shoot-planner')throw new Error('This zip isn’t a Shoot Planner backup');
+ await iclear('images');for(const u of urls.values())URL.revokeObjectURL(u);urls.clear();
+ for(const m of d.images){const u=z[m.file];if(u)await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()})}
+ S=d.state;S.shoots||=[];S.library||=[];S.locLib||=[];ui={view:'home',shootId:null,tab:'plan'};await flush();return{shoots:S.shoots.length,images:d.images.length}}
+async function getCap(name){try{if(!window.claude||!claude.use)return null;return await Promise.race([claude.use(name),new Promise(r=>setTimeout(()=>r(null),4000))])}catch(e){return null}}
+async function saveFile(blob,name,label){const mb=(blob.size/1048576).toFixed(1);const dl=await getCap('downloads');
+ if(dl){try{await dl.save({filename:name,data:blob});toast(`${label} ready (${mb} MB)`)}catch(e){toast(e.code==='declined'?`${label} cancelled`:'Download failed: '+(e.message||e.code))}return}
+ const file=new File([blob],name,{type:blob.type||'application/octet-stream'});
+ openSheet(`<h2>${esc(label)} ready</h2><p class="small">${esc(name)} · ${mb} MB</p><p class="small mute">On iPhone, choose “Save to Files” in the share sheet, then pick a folder.</p><div class="actions"><button class="btn" data-act="sheet-cancel">Close</button><button class="btn solid grow" id="savefile">Save file</button></div>`);
+ $('#savefile').onclick=async()=>{try{if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:name});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove()}closeSheet();toast(`${label} saved`)}catch(e){if(e.name!=='AbortError')toast('Couldn’t save: '+e.message)}}}
+async function doExport(){toast('Preparing backup…');const blob=await buildBackup();await saveFile(blob,`hudler-shoot-planner-backup-${new Date().toISOString().slice(0,10)}.zip`,'Backup')}
+
+/* ---------- route ---------- */
+function routeURL(sh){const a=sh.locations.map(l=>l.address).filter(Boolean);if(a.length<2)return null;const e=encodeURIComponent;
+ return`https://www.google.com/maps/dir/?api=1&origin=${e(a[0])}&destination=${e(a[a.length-1])}${a.length>2?'&waypoints='+a.slice(1,-1).map(e).join('%7C'):''}&travelmode=driving`}
+
+/* ---------- PDF export (self-contained writer; photos re-encoded as JPEG copies for the PDF only) ---------- */
+const WIN={'—':0x97,'–':0x96,'‘':0x91,'’':0x92,'“':0x93,'”':0x94,'•':0x95,'…':0x85,'·':0xb7,'→':0x3e,' ':0x20};
+function pstr(s){let o='';for(const ch of String(s??'')){let c=WIN[ch]??ch.codePointAt(0);if(c>255||c<32)c=63;if(c===40||c===41||c===92)o+='\\';o+=String.fromCharCode(c)}return'('+o+')'}
+const lb=s=>{const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i)&255;return u};
+function tw(s,size,serif){let w=0;for(const c of String(s)){w+=' il.,\'|!:;tfjI'.includes(c)?.28:'mwMW@'.includes(c)?.85:c>='A'&&c<='Z'?.68:c>='0'&&c<='9'?.556:.52}return w*size*(serif?.93:1)}
+function wrap(s,size,maxW,serif){const out=[];for(const para of String(s||'').split('\n')){let line='';for(const word of para.split(/\s+/)){if(!word)continue;const t=line?line+' '+word:word;if(tw(t,size,serif)>maxW&&line){out.push(line);line=word}else line=t}if(line)out.push(line)}return out}
+async function pdfImage(id,max=1400){try{const r=await iget('images',id);if(!r)return null;const bmp=await createImageBitmap(new Blob([r.buf],{type:r.type}));const k=Math.min(1,max/Math.max(bmp.width,bmp.height));const w=Math.round(bmp.width*k),h=Math.round(bmp.height*k);
+ const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(bmp,0,0,w,h);const b=await new Promise(res=>c.toBlob(res,'image/jpeg',.82));return{w,h,bytes:new Uint8Array(await b.arrayBuffer())}}catch(e){return null}}
+function pdfDoc(W,H){const pages=[];let pg=null;const M=26;
+ const doc={W,H,M,pages,y:0,
+  page(){pg={ops:[],images:[],links:[]};pages.push(pg);doc.y=M;return pg},
+  text(x,y,s,font='F1',size=11,gray=0){pg.ops.push(`BT ${gray} g /${font} ${size} Tf 1 0 0 1 ${x.toFixed(1)} ${(H-y).toFixed(1)} Tm ${pstr(s)} Tj ET`)},
+  rect(x,y,w,h,gray,stroke){pg.ops.push(stroke?`${gray} G 0.8 w ${x} ${H-y-h} ${w} ${h} re S`:`${gray} g ${x} ${H-y-h} ${w} ${h} re f`)},
+  line(x1,y,x2,gray=.8){pg.ops.push(`${gray} G 0.6 w ${x1} ${H-y} m ${x2} ${H-y} l S`)},
+  image(im,x,y,bw,bh){if(!im)return;const k=Math.min(bw/im.w,bh/im.h),w=im.w*k,h=im.h*k,ix=x+(bw-w)/2,iy=y+(bh-h)/2;const n='Im'+pg.images.length;pg.images.push({n,...im});pg.ops.push(`q ${w.toFixed(1)} 0 0 ${h.toFixed(1)} ${ix.toFixed(1)} ${(H-iy-h).toFixed(1)} cm /${n} Do Q`)},
+  link(x,y,w,h,url){pg.links.push({x,y,w,h,url})},
+  need(h){if(doc.y+h>H-M)doc.page()},
+  para(s,{font='F1',size=11,gray=0,x=M,w=W-2*M,lead=1.35,serif=false}={}){for(const ln of wrap(s,size,w,serif)){doc.need(size*lead);doc.y+=size*lead;doc.text(x,doc.y,ln,font,size,gray)}},
+  build(){const objs=[];const add=b=>{objs.push(b);return objs.length};add(null);add(null);
+   const F=n=>add(lb(`<< /Type /Font /Subtype /Type1 /BaseFont /${n} /Encoding /WinAnsiEncoding >>`));const f1=F('Helvetica'),f2=F('Helvetica-Bold'),f3=F('Times-Roman');const kids=[];
+   const stream=(dict,bytes)=>[lb(`<< ${dict} /Length ${bytes.length} >>\nstream\n`),bytes,lb('\nendstream')];
+   for(const p of pages){const xo=p.images.map(im=>`/${im.n} ${add(stream(`/Type /XObject /Subtype /Image /Width ${im.w} /Height ${im.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode`,im.bytes))} 0 R`).join(' ');
+    const cs=add(stream('',lb(p.ops.join('\n'))));const an=p.links.map(l=>add(lb(`<< /Type /Annot /Subtype /Link /Rect [${l.x} ${H-l.y-l.h} ${l.x+l.w} ${H-l.y}] /Border [0 0 0] /A << /S /URI /URI ${pstr(l.url)} >> >>`)));
+    kids.push(add(lb(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Contents ${cs} 0 R /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R /F3 ${f3} 0 R >> /XObject << ${xo} >> >>${an.length?` /Annots [${an.map(a=>a+' 0 R').join(' ')}]`:''} >>`)))}
+   objs[0]=lb('<< /Type /Catalog /Pages 2 0 R >>');objs[1]=lb(`<< /Type /Pages /Kids [${kids.map(k=>k+' 0 R').join(' ')}] /Count ${kids.length} >>`);
+   const parts=[lb('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n')];let off=parts[0].length;const offs=[];
+   objs.forEach((b,i)=>{offs.push(off);const bs=[lb(`${i+1} 0 obj\n`),...(Array.isArray(b)?b:[b]),lb('\nendobj\n')];for(const x of bs){parts.push(x);off+=x.length}});
+   parts.push(lb(`xref\n0 ${objs.length+1}\n0000000000 65535 f \n${offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')}trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${off}\n%%EOF\n`));
+   return new Blob(parts,{type:'application/pdf'})}};return doc}
+async function buildPdf(sh,onProg){const d=pdfDoc(432,768);const{W,H,M}=d;const L=seq(sh);
+ // overview + itinerary
+ d.page();d.y=M+8;d.para(sh.name,{font:'F3',size:28,serif:true,lead:1.1});d.y+=6;const sub=[sh.agent,fmtDate(sh.date)].filter(Boolean).join('  ·  ');if(sub)d.para(sub,{size:11,gray:.4});
+ d.para(`${sh.locations.length} locations  ·  ${L.length} shots  ·  ${L.filter(x=>x.t.priority==='must').length} must-haves`,{size:10,gray:.4});
+ if(sh.notes){d.y+=6;d.para(sh.notes,{size:10.5})}
+ const r=routeURL(sh);if(r){d.y+=10;d.need(30);d.rect(M,d.y,W-2*M,28,0);d.text(M+12,d.y+18,'Open full route in Google Maps  →','F2',11,1);d.link(M,d.y,W-2*M,28,r);d.y+=30}
+ d.y+=14;d.para('Itinerary',{font:'F3',size:18,serif:true});
+ sh.locations.forEach((l,i)=>{d.need(60);d.y+=8;d.line(M,d.y,W-M);d.y+=4;d.para(`${i+1}   ${l.name}`,{font:'F3',size:15,serif:true});
+  for(const[k,val]of[['Address',l.address],['Parking',l.parking],['Time',l.time],['Outfit',l.outfit]])if(val){const y0=d.y;d.para(val,{x:M+70,w:W-2*M-70,size:10});d.text(M+18,y0+13.5,k,'F1',9,.45);if(k==='Address')d.link(M+70,y0+2,W-2*M-70,d.y-y0,`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(val)}`)}
+  l.setups.forEach((st,si)=>{d.para(`${String.fromCharCode(97+si)}.  ${st.name}${st.time?'  ·  '+st.time:''}  ·  ${st.shots.length} shot${st.shots.length===1?'':'s'}`,{x:M+18,w:W-2*M-18,font:'F2',size:10});
+   if(st.address){const y0=d.y;d.para(st.address,{x:M+30,w:W-2*M-30,size:9.5,gray:.25});d.link(M+30,y0+2,W-2*M-30,d.y-y0,`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(st.address)}`)}
+   if(st.note)d.para(st.note,{x:M+30,w:W-2*M-30,size:9.5,gray:.45})})});
+ // packing
+ const{props,ward}=packLists(sh);if(props.size||ward.size||sh.extras.length){d.page();d.y+=8;d.para('Packing list',{font:'F3',size:22,serif:true});
+  const sec=(t,items)=>{if(!items.length)return;d.y+=10;d.para(t,{font:'F2',size:11});for(const[txt,sub]of items){d.need(30);const y0=d.y;d.rect(M,y0+6,10,10,0,true);d.para(txt,{x:M+20,w:W-2*M-20,size:11});if(sub)d.para(sub,{x:M+20,w:W-2*M-20,size:8.5,gray:.5})}};
+  sec('Props',[...props.values()].map(v=>[v.text,'For '+[...new Set(v.from)].join(', ')]));sec('Wardrobe',[...ward.values()].map(v=>[v.text,[...new Set(v.from)].join(', ')]));sec('Extra items',sh.extras.map(e=>[e.text,'']))}
+ // one page per shot
+ for(let i=0;i<L.length;i++){const{t,l,st}=L[i];onProg&&onProg(i+1,L.length);d.page();const li=sh.locations.indexOf(l)+1;
+  const lab=`${String(li).padStart(2,'0')} — ${l.name} / ${st.name}`.toUpperCase();d.text(M,M+8,wrap(lab,8.5,W-2*M-80)[0]||'','F1',8.5,.45);const sn=`SHOT ${i+1} OF ${L.length}`;d.text(W-M-tw(sn,8.5),M+8,sn,'F2',8.5,0);
+  const body=[];const T=wrap(t.title,22,W-2*M,true),P=wrap(t.prompt,11.5,W-2*M),V=t.variations?wrap('Capture: '+t.variations,10.5,W-2*M):[];
+  const meta=[framing(t),t.props.length?'Props: '+t.props.join(', '):'',t.outfit?'Outfit: '+t.outfit:''].filter(Boolean).join('   ·   ');const MT=wrap(meta,9,W-2*M);
+  const textH=T.length*24+8+P.length*15.5+(V.length?6+V.length*14:0)+MT.length*12+34;
+  const imgs=[];for(const id of t.images.slice(0,4))imgs.push(await pdfImage(id,i<0?0:1400));const extra=imgs.slice(1).filter(Boolean);
+  const top=M+18,thumbH=extra.length?84:0,boxH=Math.max(220,H-M-textH-top-thumbH-(thumbH?8:0));
+  if(imgs[0]){d.rect(M,top,W-2*M,boxH,.94);d.image(imgs[0],M,top,W-2*M,boxH)}else{d.rect(M,top,W-2*M,boxH,.6,true);d.text(M+16,top+boxH/2,t.images.length?'Photo couldn’t be included (format not supported here)':'No reference photo yet','F1',11,.5)}
+  if(extra.length){const tw2=(W-2*M-8*(extra.length-1))/extra.length;extra.forEach((im,k)=>{const x=M+k*(tw2+8);d.rect(x,top+boxH+8,tw2,thumbH,.94);d.image(im,x,top+boxH+8,tw2,thumbH)})}
+  d.y=top+boxH+thumbH+(thumbH?8:0)+10;
+  const pl=PRI[t.priority].toUpperCase();const pw=tw(pl,8,false)+14;if(t.priority==='must'){d.rect(M,d.y,pw,15,0);d.text(M+7,d.y+10.5,pl,'F2',8,1)}else{d.rect(M,d.y,pw,15,0,true);d.text(M+7,d.y+10.5,pl,'F2',8,0)}d.y+=18;
+  for(const ln of T){d.y+=24;d.text(M,d.y,ln,'F3',22)}d.y+=4;for(const ln of P){d.y+=15.5;d.text(M,d.y,ln,'F1',11.5)}
+  if(V.length){d.y+=6;for(const ln of V){d.y+=14;d.text(M,d.y,ln,'F2',10.5,.15)}}for(const ln of MT){d.y+=12;d.text(M,d.y,ln,'F1',9,.45)}}
+ return d.build()}
+async function doPdf(){const sh=shoot();if(!seq(sh).length&&!sh.locations.length)return toast('Add locations or shots first');toast('Building PDF…');
+ const blob=await buildPdf(sh,(i,n)=>{if(i%3===0||i===n)$('#toastmsg').textContent=`Building PDF… ${i}/${n}`});const name=(sh.name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'shoot')+'-shot-list.pdf';await saveFile(blob,name,'PDF')}
+
+/* ---------- fonts ---------- */
+async function loadFonts(){for(const[k,fam,w]of[['serif','Compass Serif','400'],['sans','Compass Sans','400'],['sansb','Compass Sans','600']]){try{const f=await iget('fonts',k);if(f){const ff=new FontFace(fam,f.buf,{weight:w});await ff.load();document.fonts.add(ff)}}catch(e){console.warn('font',k,e)}}}
+
+/* ---------- actions ---------- */
+const A={
+ go:d=>{ui.view=d.view;libTarget=d.view==='library'?libTarget:null;save();render();scrollTo(0,0)},
+ open:d=>{ui.shootId=d.id;ui.view='shoot';save();render();scrollTo(0,0)},
+ tab:d=>{ui.tab=d.tab;save();render()},
+ 'new-shoot':()=>editShoot({id:uid(),name:'',agent:'',date:'',notes:'',locations:[],packed:{},extras:[],currentShotId:null},true),
+ 'edit-shoot':()=>editShoot(shoot()),
+ 'dup-shoot':()=>{const sh=clone(shoot());sh.id=uid();sh.name=sh.name+' (copy)';sh.sample=false;sh.currentShotId=null;sh.packed={};
+   for(const l of sh.locations){l.id=uid();for(const st of l.setups){st.id=uid();for(const t of st.shots){t.id=uid();t.status='todo'}}}sh.extras.forEach(e=>e.id=uid());
+   S.shoots.unshift(sh);ui.shootId=sh.id;save();render();toast('Duplicated. All shots reset to to-do.')},
+ 'del-shoot':async()=>{const sh=shoot();if(await ask(`Delete “${sh.name}”? This can’t be undone unless you have a backup.`,'Delete shoot')){S.shoots=S.shoots.filter(s=>s!==sh);ui.view='home';save();render();gcImages()}},
+ 'add-loc':()=>editLoc({id:uid(),name:'',address:'',parking:'',time:'',outfit:'',setups:[]},true),
+ 'edit-loc':d=>editLoc(shoot().locations.find(l=>l.id===d.id)),
+ 'del-loc':async d=>{const sh=shoot(),i=sh.locations.findIndex(l=>l.id===d.id),l=sh.locations[i];const n=l.setups.flatMap(s=>s.shots).length;if(await ask(`Remove “${l.name}”${n?` and its ${n} shot${n>1?'s':''}`:''}?`,'Remove')){sh.locations.splice(i,1);save();render();gcImages()}},
+ 'loc-up':d=>{const L=shoot().locations;move(L,L.findIndex(l=>l.id===d.id),-1);save();render()},
+ 'loc-down':d=>{const L=shoot().locations;move(L,L.findIndex(l=>l.id===d.id),1);save();render()},
+ 'add-setup':d=>editSetup(null,true,shoot().locations.find(l=>l.id===d.id)),
+ 'edit-setup':d=>editSetup(findSetup(shoot(),d.id),false),
+ 'setup-up':d=>{const f=findSetup(shoot(),d.id);move(f.l.setups,f.i,-1);save();render()},
+ 'setup-down':d=>{const f=findSetup(shoot(),d.id);move(f.l.setups,f.i,1);save();render()},
+ 'add-shot':d=>editShot({...blankShot(),_new:true,_setup:d.id},d.id),
+ 'edit-shot':d=>editShot(findShot(shoot(),d.id).t),
+ 'shot-up':d=>{const f=findShot(shoot(),d.id);move(f.st.shots,f.i,-1);save();render()},
+ 'shot-down':d=>{const f=findShot(shoot(),d.id);move(f.st.shots,f.i,1);save();render()},
+ 'upload-shot':async d=>{const ids=await pickImages();if(!ids.length)return;const t=findShot(shoot(),d.id).t;t.images.push(...ids);save();if($('#mode').classList.contains('open'))drawMode();else render();toast(`Added ${ids.length} photo${ids.length>1?'s':''}`)},
+ 'lb-shot':d=>lightbox(findShot(shoot(),d.id).t.images),
+ 'lb-pose':d=>lightbox(S.library.find(p=>p.id===d.id).images),
+ 'lb-mode':(d,el)=>{if(el.dataset.swiped){delete el.dataset.swiped;return}const sh=shoot();lightbox(findShot(sh,sh.currentShotId).t.images)},
+ 'lb-close':()=>{$('#lb').classList.remove('open');$('#lbtrack').innerHTML=''},
+ 'from-lib':d=>{libTarget={shootId:ui.shootId,setupId:d.id};libTab='poses';ui.view='library';render();scrollTo(0,0)},
+ 'from-loclib':()=>{libTarget={shootId:ui.shootId,kind:'loc'};libTab='locations';ui.view='library';render();scrollTo(0,0)},
+ 'lib-tab':d=>{libTab=d.tab;render()},
+ 'lib-add-loc':d=>{const l=S.locLib.find(x=>x.id===d.id);const sh=S.shoots.find(s=>s.id===libTarget.shootId);const c=copyLoc(l);c.savedId=l.id;sh.locations.push(c);save();toast(`Added “${l.name}” to ${sh.name}`)},
+ 'edit-saved-loc':d=>editSavedLoc(S.locLib.find(x=>x.id===d.id)),
+ 'save-loc':d=>saveLocToLib(shoot().locations.find(l=>l.id===d.id)),
+ 'lib-add':d=>{const p=S.library.find(x=>x.id===d.id);const sh=S.shoots.find(s=>s.id===libTarget.shootId);const f=findSetup(sh,libTarget.setupId);
+   const c=clone(p);delete c.tags;f.st.shots.push({...blankShot(),...c,id:uid(),libraryId:p.id,status:'todo'});save();toast(`Added “${p.title}” to ${f.st.name}`)},
+ 'lib-done':()=>{ui.shootId=libTarget.shootId;ui.view='shoot';ui.tab=libTarget.kind==='loc'?'plan':'shots';libTarget=null;save();render();scrollTo(0,0)},
+ 'bulk-poses':()=>{const p=$('#pick');p.value='';p.onchange=async()=>{const fs=[...p.files];if(!fs.length)return;const tag='imported '+new Date().toISOString().slice(0,10);let n=0;
+   for(const f of fs){const[id]=await addImages([f]);S.library.unshift({...blankShot(),id:uid(),title:(f.name||'Pose').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').trim()||'Pose',images:[id],priority:'optional',tags:tag});n++;if(n%5===0||n===fs.length)toast(`Importing ${n}/${fs.length}…`)}
+   await flush();libTab='poses';render();toast(`Added ${n} poses. Search “imported” to find them.`)};p.click()},
+ pdf:()=>doPdf().catch(e=>toast('PDF failed: '+e.message)),
+ 'new-pose':()=>editPose({...blankShot(),title:'New pose',tags:'',_new:true}),
+ 'edit-pose':d=>editPose(S.library.find(p=>p.id===d.id)),
+ pack:(d,el)=>{const sh=shoot();if(el.checked)sh.packed[d.key]=true;else delete sh.packed[d.key];save();render()},
+ unpack:()=>{shoot().packed={};save();render()},
+ 'del-extra':d=>{const sh=shoot();sh.extras=sh.extras.filter(e=>e.id!==d.id);delete sh.packed['x:'+d.id];save();render()},
+ mode:()=>openMode(),'mode-close':()=>closeMode(),
+ 'mode-prev':()=>modeStep(-1),'mode-next':()=>modeStep(1),
+ 'mode-done':()=>mark('done'),'mode-skip':()=>mark('skipped'),
+ 'mode-reset':()=>{const sh=shoot();const t=findShot(sh,sh.currentShotId).t;const prev=t.status;t.status='todo';save();drawMode();toast('Back to to-do',()=>{t.status=prev;save();drawMode()},true)},
+ 'mode-filter':()=>{M.mustOnly=!M.mustOnly;const sh=shoot();if(M.mustOnly){const c=findShot(sh,sh.currentShotId)?.t;if(!c||c.priority!=='must'||c.status!=='todo'){const n=seq(sh).find(x=>x.t.priority==='must'&&x.t.status==='todo');if(n)sh.currentShotId=n.t.id}}save();drawMode()},
+ 'mode-list':()=>modeListSheet(),
+ 'mode-jump':d=>{const sh=shoot();sh.currentShotId=d.id;if(M.mustOnly&&!modeList(sh).some(x=>x.t.id===d.id))M.mustOnly=false;closeSheet();save();drawMode()},
+ 'sheet-cancel':()=>closeSheet(),
+ export:()=>doExport().catch(e=>toast('Backup failed: '+e.message)),
+ import:()=>{const p=$('#pickzip');p.value='';p.onchange=async()=>{const f=p.files[0];if(!f)return;if(!await ask('Replace everything in this browser with this backup?','Restore'))return;
+   try{const r=await restoreBackup(await f.arrayBuffer());render();toast(`Restored ${r.shoots} shoots and ${r.images} photos`)}catch(e){toast('Restore failed: '+e.message)}};p.click()},
+ font:d=>{const p=$('#pickfont');p.value='';p.onchange=async()=>{const f=p.files[0];if(!f)return;try{const buf=await f.arrayBuffer();const fam=d.role==='serif'?'Compass Serif':'Compass Sans';const ff=new FontFace(fam,buf,{weight:d.role==='sansb'?'600':'400'});await ff.load();document.fonts.add(ff);
+   await iput('fonts',d.role,{buf,name:f.name});toast('Font loaded: '+f.name);fillStorage()}catch(e){toast('That file couldn’t be read as a font')}};p.click()},
+ 'font-del':async d=>{await idel('fonts',d.role);toast('Font removed. It goes away fully after you reopen the tool.');fillStorage()},
+ 'add-sample':()=>{S.shoots.push(sample());save();toast('Sample shoot added');ui.view='home';render()}
+};
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.tagName==='INPUT'&&el.type==='checkbox'&&e.type==='click'&&el.dataset.act==='pack')return;const f=A[el.dataset.act];if(f){e.preventDefault();f(el.dataset,el)}});
+document.addEventListener('change',e=>{const el=e.target;if(el.dataset&&el.dataset.act==='pack')A.pack(el.dataset,el)});
+document.addEventListener('input',e=>{if(e.target.id==='libq'){libQ=e.target.value;const pos=e.target.selectionStart;render();const q=$('#libq');q.focus();q.setSelectionRange(pos,pos)}});
+document.addEventListener('submit',e=>{if(e.target.id==='extraform'){e.preventDefault();const t=v('extratext');if(t){shoot().extras.push({id:uid(),text:t});save();render();$('#extratext')?.focus()}}});
+$('#scrim').addEventListener('click',e=>{if(e.target.id==='scrim')closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#lb').classList.contains('open'))A['lb-close']();else if($('#scrim').classList.contains('open'))closeSheet();else if($('#mode').classList.contains('open'))closeMode()}
+ if($('#mode').classList.contains('open')&&!$('#scrim').classList.contains('open')&&!$('#lb').classList.contains('open')){if(e.key==='ArrowRight')modeStep(1);if(e.key==='ArrowLeft')modeStep(-1)}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flush()});
+
+/* ---------- boot ---------- */
+(async()=>{try{const s=await iget('kv','state');if(s){S=s;S.library||=[];S.locLib||=[];const u=await iget('kv','ui');if(u)ui=u}else{S.shoots=[sample()];await flush()}loadFonts();gcImages()}
+ catch(e){storageOK=false;S.shoots=[sample()];setTimeout(()=>toast('This browser isn’t allowing saved data. Changes will be lost when you close the page.'),300)}
+ if(ui.view==='shoot'&&!shoot())ui.view='home';render();
+ // offline support: only when served from a real web address (GitHub Pages etc.), never inside Claude's viewer
+ try{if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')&&!/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)){
+  navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{OFFLINE_OK=true;if(ui.view==='settings')render()}).catch(()=>{})}}catch(e){}
+ if(STANDALONE){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}})();
+window.__hh={get S(){return S},flush,buildBackup,restoreBackup,buildPdf};
+}
+</script>
+</body>
+</html>
