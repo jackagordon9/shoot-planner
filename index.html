@@ -41,7 +41,7 @@ a{color:inherit}
 main{max-width:1080px;margin:0 auto;padding:28px max(4vw,16px) 120px}
 .mute{color:var(--mute)}.small{font-size:14px}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.btn{min-height:44px;padding:0 16px;border:1px solid var(--ink);background:transparent;border-radius:2px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;white-space:nowrap}
+.btn{min-height:44px;padding:6px 16px;border:1px solid var(--ink);background:transparent;border-radius:2px;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;white-space:normal;text-align:center;line-height:1.25;max-width:100%}
 .btn.solid{background:var(--ink);color:var(--bg)}
 .btn.ghost{border-color:var(--line)}
 .btn.big{min-height:56px;font-size:17px;width:100%}
@@ -62,6 +62,10 @@ main{max-width:1080px;margin:0 auto;padding:28px max(4vw,16px) 120px}
 .facts b{font-weight:400;color:var(--mute);display:inline-block;min-width:68px}
 .spots{margin:4px 0 6px;border-left:1px solid var(--line);padding-left:14px;display:grid;gap:12px}
 .spot-h b{font-weight:400;font-family:var(--serif);font-size:18px}
+.spotimgs{display:flex;gap:6px;margin:6px 0;align-items:center;flex-wrap:wrap}
+.spotimg{width:76px;height:76px;padding:0;border:0;background:var(--soft);overflow:hidden;cursor:pointer;border-radius:2px}
+.spotimg img{width:100%;height:100%;object-fit:cover;display:block}
+.mtop .where[data-act]{cursor:pointer}.mtop .where .sp{color:#f2f2f2;text-decoration:underline;text-underline-offset:3px}
 .spot .btn{min-height:38px;font-size:14px;padding:0 12px}
 .ctrl{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .setup{margin:18px 0 8px;padding-top:14px;border-top:1px dashed var(--line)}
@@ -106,7 +110,7 @@ label.f{display:block;margin:14px 0 0;font-size:14px;color:var(--mute)}
 .imgs .x{position:absolute;top:4px;right:4px;width:32px;height:32px;border:0;background:rgba(0,0,0,.7);color:#fff;border-radius:2px}
 .imgs .mv{position:absolute;bottom:4px;left:4px;width:32px;height:32px;border:0;background:rgba(0,0,0,.7);color:#fff;border-radius:2px}
 .imgs .drop{aspect-ratio:1}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;position:sticky;bottom:-28px;background:var(--bg);padding:12px 0 4px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;position:sticky;bottom:0;background:var(--bg);padding:12px 0 calc(14px + env(safe-area-inset-bottom));z-index:2}
 .actions .grow{margin-left:auto}
 /* shoot mode */
 .mode{position:fixed;inset:0;background:#000;color:#f2f2f2;z-index:40;display:none;flex-direction:column}
@@ -158,7 +162,7 @@ label.f{display:block;margin:14px 0 0;font-size:14px;color:var(--mute)}
 .mtop{padding-top:max(8px,env(safe-area-inset-top))}
 .lb .ic{top:calc(10px + env(safe-area-inset-top))}.lb .cnt{top:calc(22px + env(safe-area-inset-top))}
 .toast{bottom:calc(24px + env(safe-area-inset-bottom))}
-.sheet{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+.sheet{padding-bottom:0}
 main{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 @media(max-width:600px){.shoots .card{grid-template-columns:76px minmax(0,1fr)}.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}.shot h4{font-size:16px}.brand small{display:none}}
 @media(prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(16px);opacity:.6}}}
@@ -213,7 +217,7 @@ async function imgURL(id){if(urls.has(id))return urls.get(id);const r=await iget
 function hydrate(root=document){for(const el of root.querySelectorAll('img[data-img]:not([src])')){imgURL(el.dataset.img).then(u=>{if(u)el.src=u;else el.alt='Image missing'})}}
 const img=(id,cls='')=>id?`<img data-img="${esc(id)}" alt="" class="${cls}" decoding="async">`:'';
 function pickImages(){return new Promise(res=>{const p=$('#pick');p.value='';p.onchange=async()=>{const f=[...p.files];res(f.length?await addImages(f):[])};p.click()})}
-async function gcImages(){const keep=new Set();for(const sh of S.shoots)for(const t of allShots(sh))t.images.forEach(i=>keep.add(i));for(const p of S.library)p.images.forEach(i=>keep.add(i));for(const l of S.locLib)for(const st of l.setups)for(const t of st.shots)t.images.forEach(i=>keep.add(i));for(const k of await ikeys('images'))if(!keep.has(k)){await idel('images',k);urls.delete(k)}}
+async function gcImages(){const keep=new Set();const locs=[...S.shoots.flatMap(sh=>sh.locations),...S.locLib];for(const l of locs)for(const st of l.setups){(st.images||[]).forEach(i=>keep.add(i));for(const t of st.shots)t.images.forEach(i=>keep.add(i))}for(const p of S.library)p.images.forEach(i=>keep.add(i));for(const k of await ikeys('images'))if(!keep.has(k)){await idel('images',k);urls.delete(k)}}
 
 /* ---------- model helpers ---------- */
 const blankShot=()=>({id:uid(),title:'New shot',images:[],prompt:'',dist:['medium'],orient:'vertical',variations:'',props:[],outfit:'',priority:'must',status:'todo'});
@@ -249,8 +253,9 @@ function render(){setNav();const a=$('#app');
  a.innerHTML=ui.view==='shoot'&&shoot()?vShoot():ui.view==='library'?vLibrary():ui.view==='settings'?vSettings():vHome();
  hydrate(a);if(ui.view==='settings')fillStorage()}
 
-function vHome(){const list=S.shoots.map(sh=>{const p=prog(allShots(sh));const first=allShots(sh).find(t=>t.images.length);
- return`<button class="card" data-act="open" data-id="${sh.id}"><div class="thumb">${first?img(first.images[0]):'No photos yet'}</div><div>${sh.sample?'<span class="sample">Sample</span>':''}<h2>${esc(sh.name)}</h2><div class="mute small">${esc([sh.agent,fmtDate(sh.date)].filter(Boolean).join(' · '))}</div><div class="small" style="margin-top:6px">${sh.locations.length} locations · ${p.d}/${p.n} shots done</div><div class="bar"><i style="width:${p.pct}%"></i></div></div></button>`}).join('');
+const firstImg=locs=>{for(const l of locs)for(const st of l.setups){if((st.images||[]).length)return st.images[0];const t=st.shots.find(t=>t.images.length);if(t)return t.images[0]}return null};
+function vHome(){const list=S.shoots.map(sh=>{const p=prog(allShots(sh));const fi=firstImg(sh.locations);
+ return`<button class="card" data-act="open" data-id="${sh.id}"><div class="thumb">${fi?img(fi):'No photos yet'}</div><div>${sh.sample?'<span class="sample">Sample</span>':''}<h2>${esc(sh.name)}</h2><div class="mute small">${esc([sh.agent,fmtDate(sh.date)].filter(Boolean).join(' · '))}</div><div class="small" style="margin-top:6px">${sh.locations.length} locations · ${p.d}/${p.n} shots done</div><div class="bar"><i style="width:${p.pct}%"></i></div></div></button>`}).join('');
  return`<div class="row" style="justify-content:space-between;margin-bottom:18px"><h1>Shoots</h1><div class="row"><button class="btn" data-act="import-shoot">Import shoot</button><button class="btn solid" data-act="new-shoot">New shoot</button></div></div><div class="shoots">${list||'<p class="empty">No shoots yet. Create one to start planning.</p>'}</div>`}
 
 function vShoot(){const sh=shoot();const p=prog(allShots(sh));const cur=sh.currentShotId&&findShot(sh,sh.currentShotId);
@@ -268,10 +273,11 @@ function vPlan(sh){const L=sh.locations;const r=routeURL(sh);
  return`<div class="loc"><div class="num">${i+1}</div><div><h2>${esc(l.name)}</h2>
  <div class="facts">${l.address?`<div><b>Address</b> ${esc(l.address)}</div>`:''}${l.parking?`<div><b>Parking</b> ${esc(l.parking)}</div>`:''}${l.time?`<div><b>Time</b> ${esc(l.time)}</div>`:''}${l.outfit?`<div><b>Outfit</b> ${esc(l.outfit)}</div>`:''}<div><b>Shots</b> ${p.d}/${p.n} done</div></div>
  <div class="row">${l.address?maps(l.address):''}</div>
- ${l.setups.length?`<div class="spots">${l.setups.map((st,si)=>`<div class="spot"><div class="spot-h"><span class="mute">${String.fromCharCode(97+si)}.</span> <b>${esc(st.name)}</b>${st.time?` <span class="mute small">· ${esc(st.time)}</span>`:''} <span class="mute small">· ${st.shots.length} shot${st.shots.length===1?'':'s'}</span></div>${st.address?`<div class="small">${esc(st.address)}</div>`:''}${st.note?`<div class="small mute">${esc(st.note)}</div>`:''}${st.address?`<div class="row" style="margin-top:6px">${maps(st.address)}</div>`:''}</div>`).join('')}</div>`:''}
+ ${l.setups.length?`<div class="spots">${l.setups.map((st,si)=>`<div class="spot"><div class="spot-h"><span class="mute">${String.fromCharCode(97+si)}.</span> <b>${esc(st.name)}</b>${st.time?` <span class="mute small">· ${esc(st.time)}</span>`:''} <span class="mute small">· ${st.shots.length} shot${st.shots.length===1?'':'s'}</span></div>${spotStrip(st)}${st.address?`<div class="small">${esc(st.address)}</div>`:''}${st.note?`<div class="small mute">${esc(st.note)}</div>`:''}${st.address?`<div class="row" style="margin-top:6px">${maps(st.address)}</div>`:''}</div>`).join('')}</div>`:''}
  <div class="ctrl"><button class="ic" data-act="loc-up" data-id="${l.id}" aria-label="Move up" ${i?'':'disabled'}>↑</button><button class="ic" data-act="loc-down" data-id="${l.id}" aria-label="Move down" ${i<L.length-1?'':'disabled'}>↓</button><button class="btn ghost" data-act="edit-loc" data-id="${l.id}">Edit</button><button class="btn ghost" data-act="add-setup" data-id="${l.id}">Add spot</button><button class="btn ghost" data-act="save-loc" data-id="${l.id}">${l.savedId&&S.locLib.some(x=>x.id===l.savedId)?'Update in library':'Save to library'}</button><button class="btn ghost" data-act="del-loc" data-id="${l.id}">Remove</button></div></div></div>`}).join('')||'<p class="empty">No locations yet. Add a new one, or pull in a location you’ve saved before.</p>')+
  `<div class="row" style="margin-top:12px"><button class="btn" data-act="add-loc">Add location</button><button class="btn ghost" data-act="from-loclib">Add saved location</button></div>`}
 
+const spotStrip=st=>(st.images||[]).length?`<div class="spotimgs">${st.images.slice(0,4).map((id,k)=>`<button class="spotimg" data-act="lb-spot" data-id="${st.id}" data-i="${k}" aria-label="Spot photo ${k+1}">${img(id)}</button>`).join('')}${st.images.length>4?`<span class="mute small">+${st.images.length-4}</span>`:''}</div>`:'';
 function shotCard(t,st,i,n){return`<div class="shot"><div class="thumb" data-act="${t.images.length?'lb-shot':'upload-shot'}" data-id="${t.id}">${t.images.length?img(t.images[0])+(t.images.length>1?`<span class="count">${t.images.length} refs</span>`:''):'<span>＋<br>Add reference photos</span>'}</div>
  <div class="row" style="gap:6px"><span class="tag ${t.priority==='must'?'must':''}">${PRI[t.priority]}</span>${t.status!=='todo'?`<span class="tag done">${t.status==='done'?'Done':'Skipped'}</span>`:''}</div>
  <h4>${esc(t.title)}</h4><div class="stat">Shot ${n} · ${esc(framing(t))}</div>${t.prompt?`<div class="small">${esc(t.prompt)}</div>`:''}${t.variations?`<div class="small mute">Capture: ${esc(t.variations)}</div>`:''}
@@ -280,7 +286,7 @@ function shotCard(t,st,i,n){return`<div class="shot"><div class="thumb" data-act
 function vShots(sh){if(!sh.locations.length)return'<p class="empty">Add a location on the Itinerary tab first.</p>';const num=new Map(seq(sh).map((x,i)=>[x.t.id,i+1]));
  return sh.locations.map((l,li)=>`<section class="locgroup"><h2>${li+1}. ${esc(l.name)}</h2>${l.setups.map((st,si)=>`<div class="setup"><div class="setup-h"><h3>${esc(st.name)}</h3>
  <button class="ic" data-act="setup-up" data-id="${st.id}" aria-label="Move setup up" ${si?'':'disabled'}>↑</button><button class="ic" data-act="setup-down" data-id="${st.id}" aria-label="Move setup down" ${si<l.setups.length-1?'':'disabled'}>↓</button><button class="btn ghost" data-act="edit-setup" data-id="${st.id}">Edit</button></div>
- ${st.address||st.note||st.time?`<div class="small mute" style="margin-top:4px">${esc([st.address,st.time,st.note].filter(Boolean).join(' · '))}</div>`:''}
+ ${spotStrip(st)}${st.address||st.note||st.time?`<div class="small mute" style="margin-top:4px">${esc([st.address,st.time,st.note].filter(Boolean).join(' · '))}</div>`:''}
  <div class="grid">${st.shots.map((t,i)=>shotCard(t,st,i,num.get(t.id))).join('')}</div>
  <div class="row" style="margin-top:14px"><button class="btn" data-act="add-shot" data-id="${st.id}">Add shot</button><button class="btn ghost" data-act="from-lib" data-id="${st.id}">Add from library</button></div></div>`).join('')}
  <button class="btn ghost" data-act="add-setup" data-id="${l.id}" style="margin-top:16px">Add spot to ${esc(l.name)}</button></section>`).join('')}
@@ -311,7 +317,7 @@ function vLocLib(tabs){const q=norm(libQ);const list=S.locLib.filter(l=>!q||norm
  <h1>Library</h1><div class="tabs" role="tablist" style="margin-top:18px">${tabs}</div>
  <input class="search" id="libq" type="search" placeholder="Search locations, spots, shots" value="${esc(libQ)}" style="margin-top:0">
  <div class="mute small">${list.length} of ${S.locLib.length} saved locations</div>
- ${list.map(l=>{const shots=l.setups.flatMap(s=>s.shots);const first=shots.find(t=>t.images.length);return`<div class="shoots"><div class="card" style="cursor:default"><div class="thumb">${first?img(first.images[0]):'No photos'}</div><div><h2>${esc(l.name)}</h2>${l.address?`<div class="small">${esc(l.address)}</div>`:''}
+ ${list.map(l=>{const shots=l.setups.flatMap(s=>s.shots);const fi=firstImg([l]);return`<div class="shoots"><div class="card" style="cursor:default"><div class="thumb">${fi?img(fi):'No photos'}</div><div><h2>${esc(l.name)}</h2>${l.address?`<div class="small">${esc(l.address)}</div>`:''}
  <div class="small mute" style="margin-top:4px">${l.setups.length} spot${l.setups.length===1?'':'s'} · ${shots.length} shot${shots.length===1?'':'s'}${l.setups.length?' — '+esc(l.setups.map(s=>s.name).join(', ')):''}</div>
  <div class="ctrl">${tgt?`<button class="btn solid" data-act="lib-add-loc" data-id="${l.id}">Add to shoot</button>`:''}<button class="btn ghost" data-act="edit-saved-loc" data-id="${l.id}">Details</button></div></div></div></div>`}).join('')}
  ${S.locLib.length?'':'<p class="empty">No saved locations yet. In any shoot’s itinerary, tap “Save to library” on a location. It’s saved with all its spots, shots and reference photos, ready to drop into future shoots.</p>'}`}
@@ -366,13 +372,19 @@ function editLoc(l,isNew){const sh=shoot();openSheet(`<h2>${isNew?'New location'
  <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button><button class="btn solid grow" id="ok">Save</button></div>`);
  $('#ok').onclick=()=>{l.name=v('f-name')||'Location';l.address=v('f-addr');l.parking=v('f-park');l.time=v('f-time');l.outfit=v('f-out');if(isNew){l.setups.push({id:uid(),name:'Setup 1',shots:[]});sh.locations.push(l)}closeSheet();save();render()}}
 
-function editSetup(found,isNew,loc){const sh=shoot();const st=found?found.st:{id:uid(),name:'',shots:[]};
+function imgEditor(el,list){const draw=()=>{el.innerHTML=list.map((id,i)=>`<figure><div class="thumb">${img(id)}</div><button type="button" class="x" data-i="${i}" aria-label="Remove photo">✕</button>${i?`<button type="button" class="mv" data-i="${i}" aria-label="Move photo earlier">←</button>`:''}</figure>`).join('')+`<button type="button" class="drop" data-add="1">＋<br>Add photos</button>`;hydrate(el);
+  el.querySelector('[data-add]').onclick=async()=>{list.push(...await pickImages());draw()};
+  for(const b of el.querySelectorAll('.x'))b.onclick=()=>{list.splice(+b.dataset.i,1);draw()};
+  for(const b of el.querySelectorAll('.mv'))b.onclick=()=>{move(list,+b.dataset.i,-1);draw()}};draw();return list}
+function editSetup(found,isNew,loc){const sh=shoot();const st=found?found.st:{id:uid(),name:'',shots:[],images:[]};st.images||=[];
  openSheet(`<h2>${isNew?'New setup / spot':'Setup / spot'}</h2>${fld('f-name','Name (e.g. Thames St pier, Living room sofa)',st.name)}
+ <div class="f" style="margin-top:14px;font-size:14px;color:var(--mute)">Spot photos (what the location looks like; poses go on shots)</div><div class="imgs" id="f-simgs"></div>
  ${fld('f-saddr','Spot address or landmark (optional — adds map links)',st.address||'')}${fld('f-stime','Estimated time (optional)',st.time||'')}${fld('f-snote','Spot note (optional — e.g. behind the bike rack, face east)',st.note||'','area')}
  <label class="f">Location<select id="f-loc">${sh.locations.map(l=>`<option value="${l.id}" ${l.id===(found?found.l.id:loc.id)?'selected':''}>${esc(l.name)}</option>`).join('')}</select></label>
  <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button>${isNew?'':`<button class="btn ghost" id="del">Remove setup</button>`}<button class="btn solid grow" id="ok">Save</button></div>`);
- $('#ok').onclick=()=>{st.name=v('f-name')||'Setup';st.address=v('f-saddr');st.time=v('f-stime');st.note=v('f-snote');const to=sh.locations.find(l=>l.id===$('#f-loc').value);
-  if(found&&to!==found.l){found.l.setups.splice(found.i,1);to.setups.push(st)}else if(isNew)to.setups.push(st);closeSheet();save();render()};
+ const simgs=imgEditor($('#f-simgs'),[...st.images]);
+ $('#ok').onclick=()=>{st.name=v('f-name')||'Setup';st.address=v('f-saddr');st.time=v('f-stime');st.note=v('f-snote');st.images=[...simgs];const to=sh.locations.find(l=>l.id===$('#f-loc').value);
+  if(found&&to!==found.l){found.l.setups.splice(found.i,1);to.setups.push(st)}else if(isNew)to.setups.push(st);closeSheet();save();render();gcImages()};
  if(!isNew)$('#del').onclick=async()=>{const n=st.shots.length;if(await ask(`Remove “${st.name}”${n?` and its ${n} shot${n>1?'s':''}`:''}?`,'Remove')){found.l.setups.splice(found.i,1);save();render();gcImages()}}}
 
 function shotForm(t,kind){let imgs=[...t.images];const sh=shoot();
@@ -392,7 +404,7 @@ function shotForm(t,kind){let imgs=[...t.images];const sh=shoot();
  ${fld('f-var','Variations (optional)',t.variations,'area')}${fld('f-props','Props — one per line or comma-separated',t.props.join('\n'),'area')}${fld('f-outfit','Outfit notes (optional)',t.outfit)}
  ${kind==='pose'?fld('f-tags','Tags (for search, e.g. seated, kitchen, couple)',t.tags||''):''}${setupSel}
  ${t.libraryId?'<p class="mute small">Added from the library. Changes here affect this shoot only.</p>':''}
- <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button>${t._new?'':`<button class="btn ghost" id="del">Delete</button>`}${kind==='shot'?`<button class="btn ghost" id="tolib">Save to library</button>`:''}<button class="btn solid grow" id="ok">Save</button></div>`;
+ <div class="actions"><button class="btn" data-act="sheet-cancel">Cancel</button>${t._new?'':`<button class="btn ghost" id="del">Delete</button>`}${kind==='shot'?`<button class="btn ghost" id="tolib">Save to library</button>`:''}${kind==='shot'&&!t._new&&t.images.length?`<button class="btn ghost" id="tospot">Use as spot photos</button>`:''}<button class="btn solid grow" id="ok">Save</button></div>`;
  openSheet(html);draw();
  const read=()=>({title:v('f-title')||'Untitled',images:[...imgs],prompt:v('f-prompt'),dist:[...document.querySelectorAll('[name=dist]:checked')].map(x=>x.value),orient:$('[name=orient]:checked')?.value||'',priority:$('[name=pri]:checked')?.value||'optional',
   variations:v('f-var'),props:v('f-props').split(/[\n,]/).map(s=>s.trim()).filter(Boolean),outfit:v('f-outfit'),...(kind==='pose'?{tags:v('f-tags')}:{})});
@@ -401,6 +413,9 @@ function shotForm(t,kind){let imgs=[...t.images];const sh=shoot();
 function editShot(t,setupId){const sh=shoot();const isNew=!!t._new;const f=shotForm(t,'shot');
  $('#ok').onclick=()=>{Object.assign(t,f.read());delete t._new;delete t._setup;const to=findSetup(sh,$('#f-setup').value);const cur=findShot(sh,t.id);
   if(!cur)to.st.shots.push(t);else if(cur.st!==to.st){cur.st.shots.splice(cur.i,1);to.st.shots.push(t)}closeSheet();save();render();gcImages()};
+ const ts=$('#tospot');if(ts)ts.onclick=async()=>{const c=findShot(sh,t.id);if(!c)return;const n=t.images.length;
+  if(!await ask(`Move ${n===1?'this photo':`these ${n} photos`} to the “${c.st.name}” spot and remove the “${t.title}” shot? Other shots in this spot aren’t affected.`,'Move to spot'))return;
+  const c2=findShot(sh,t.id);c2.st.images=[...(c2.st.images||[]),...t.images];c2.st.shots.splice(c2.i,1);if(sh.currentShotId===t.id)sh.currentShotId=null;save();render();toast(`Moved to ${c2.st.name} spot photos`)};
  $('#tolib').onclick=()=>{const d=f.read();S.library.unshift({id:uid(),tags:'',...d});save();toast('Saved a copy to the library')};
  if(!isNew)$('#del').onclick=async()=>{if(await ask(`Delete “${t.title}”?`,'Delete')){const c=findShot(sh,t.id);c.st.shots.splice(c.i,1);if(sh.currentShotId===t.id)sh.currentShotId=null;save();render();gcImages()}}}
 
@@ -432,7 +447,7 @@ function drawMode(){const sh=shoot();const list=modeList(sh);let i=list.findInde
  if(i<0){if(!list.length){$('#mode').innerHTML=`<div class="mtop"><button class="ic" data-act="mode-close" aria-label="Close shoot mode">✕</button><div class="where"><b>All must-haves are done</b></div><button class="ic" data-act="mode-filter" aria-pressed="true" aria-label="Show all shots">★</button></div><div class="mimg"><div class="none">No must-have shots left.<br><button class="btn" data-act="mode-filter">Show all shots</button></div></div>`;return}i=0;sh.currentShotId=list[0].t.id}
  const{t,l,st}=list[i];const allS=allShots(sh),P=prog(allS),LP=prog(l.setups.flatMap(s=>s.shots));
  const left=allS.filter(x=>x.priority==='must'&&x.status==='todo').length;
- $('#mode').innerHTML=`<div class="mtop"><button class="ic" data-act="mode-close" aria-label="Close shoot mode">✕</button><div class="where"><b>${esc(l.name)}</b>${esc(st.name)}</div>
+ $('#mode').innerHTML=`<div class="mtop"><button class="ic" data-act="mode-close" aria-label="Close shoot mode">✕</button><div class="where" ${(st.images||[]).length?'data-act="lb-spot-cur"':''}><b>${esc(l.name)}</b>${(st.images||[]).length?`<span class="sp">${esc(st.name)} · spot photo${st.images.length>1?'s':''}</span>`:esc(st.name)}</div>
  <button class="ic" data-act="mode-list" aria-label="All shots and progress">☰</button><button class="ic" data-act="mode-filter" aria-pressed="${M.mustOnly}" aria-label="Show only remaining must-haves" title="Remaining must-haves">★</button></div>
  <div class="mprog"><span>This location ${LP.d}/${LP.n}</span><div class="bar"><i style="width:${P.pct}%"></i></div><span>Shoot ${P.d}/${P.n}</span></div>
  <div class="mimg" id="mimg" ${t.images.length?'data-act="lb-mode"':''}>${t.images.length?img(t.images[0])+(t.images.length>1?`<span class="more">1 of ${t.images.length} · tap</span>`:''):`<div class="none">No reference photo yet<br><button class="btn" data-act="upload-shot" data-id="${t.id}">Add photos</button></div>`}</div>
@@ -447,7 +462,7 @@ function mark(status){const sh=shoot();const t=findShot(sh,sh.currentShotId)?.t;
  if(nxt)sh.currentShotId=nxt.t.id;save();drawMode();
  toast(`${status==='done'?'Done':'Skipped'}: ${t.title}`,()=>{t.status=prev;sh.currentShotId=id;save();drawMode()},true)}
 function modeListSheet(){const sh=shoot();const cur=findShot(sh,sh.currentShotId);const where=cur&&(cur.st.address||cur.l.address);
- openSheet(`<h2>Shots & progress</h2>${cur?`<div class="note"><b>Now: ${esc(cur.l.name)} → ${esc(cur.st.name)}</b>${where?`<div class="small">${esc(where)}</div><div class="row" style="margin-top:8px">${maps(where)}</div>`:''}${cur.st.note?`<div class="small mute" style="margin-top:6px">${esc(cur.st.note)}</div>`:''}</div>`:''}${sh.locations.map(l=>{const P=prog(l.setups.flatMap(s=>s.shots));return`<h3 style="margin-top:18px">${esc(l.name)} <span class="mute small">${P.d}/${P.n}</span></h3>${l.setups.map(st=>`<div class="small mute" style="margin-top:10px">${esc(st.name)}${st.address?' · '+esc(st.address):''}</div>`+st.shots.map(t=>`<button class="check" style="width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;align-items:center" data-act="mode-jump" data-id="${t.id}"><span>${t.id===sh.currentShotId?'→ ':''}${esc(t.title)}<small>${esc(st.name)} · ${PRI[t.priority]}</small></span><span class="tag ${t.status==='done'?'done':''}" style="flex:none">${t.status==='todo'?'To do':t.status==='done'?'Done':'Skipped'}</span></button>`).join('')).join('')}`}).join('')}<div class="actions"><button class="btn solid grow" data-act="sheet-cancel">Close</button></div>`)}
+ openSheet(`<h2>Shots & progress</h2>${cur?`<div class="note"><b>Now: ${esc(cur.l.name)} → ${esc(cur.st.name)}</b>${spotStrip(cur.st)}${where?`<div class="small">${esc(where)}</div><div class="row" style="margin-top:8px">${maps(where)}</div>`:''}${cur.st.note?`<div class="small mute" style="margin-top:6px">${esc(cur.st.note)}</div>`:''}</div>`:''}${sh.locations.map(l=>{const P=prog(l.setups.flatMap(s=>s.shots));return`<h3 style="margin-top:18px">${esc(l.name)} <span class="mute small">${P.d}/${P.n}</span></h3>${l.setups.map(st=>`<div class="small mute" style="margin-top:10px">${esc(st.name)}${st.address?' · '+esc(st.address):''}</div>`+st.shots.map(t=>`<button class="check" style="width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;align-items:center" data-act="mode-jump" data-id="${t.id}"><span>${t.id===sh.currentShotId?'→ ':''}${esc(t.title)}<small>${esc(st.name)} · ${PRI[t.priority]}</small></span><span class="tag ${t.status==='done'?'done':''}" style="flex:none">${t.status==='todo'?'To do':t.status==='done'?'Done':'Skipped'}</span></button>`).join('')).join('')}`}).join('')}<div class="actions"><button class="btn solid grow" data-act="sheet-cancel">Close</button></div>`)}
 function swipe(el,fn){if(!el)return;let x0=null,y0=0,moved=false;el.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;moved=false},{passive:true});
  el.addEventListener('touchmove',e=>{if(x0!==null&&Math.abs(e.touches[0].clientX-x0)>12)moved=true},{passive:true});
  el.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){el.dataset.swiped='1';fn(dx<0?1:-1)}});}
@@ -484,12 +499,12 @@ async function restoreBackup(buf){const z=readZip(buf);if(!z['data.json'])throw 
  for(const m of d.images){const u=z[m.file];if(u)await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()})}
  S=d.state;S.shoots||=[];S.library||=[];S.locLib||=[];ui={view:'home',shootId:null,tab:'plan'};await flush();return{shoots:S.shoots.length,images:d.images.length}}
 /* single-shoot file: same zip format as a backup, holding one shoot and only its photos */
-async function buildShootFile(sh){await flush();const ids=new Set();for(const t of allShots(sh))t.images.forEach(i=>ids.add(i));const files=[],meta=[];
+async function buildShootFile(sh){await flush();const ids=new Set();for(const t of allShots(sh))t.images.forEach(i=>ids.add(i));for(const l of sh.locations)for(const st of l.setups)(st.images||[]).forEach(i=>ids.add(i));const files=[],meta=[];
  for(const id of ids){const r=await iget('images',id);if(!r)continue;const file=`images/${id}.${extOf(r.type)}`;meta.push({id,file,type:r.type,name:r.name});files.push({name:file,data:new Uint8Array(r.buf)})}
  files.unshift({name:'data.json',data:new TextEncoder().encode(JSON.stringify({app:'hudler-shoot-planner',kind:'shoot',version:1,exported:new Date().toISOString(),state:{shoots:[sh],library:[],locLib:[]},images:meta},null,1))});return makeZip(files)}
 function readPlannerZip(buf){const z=readZip(buf);if(!z['data.json'])throw new Error('This file isn’t a Shoot Planner file');const d=JSON.parse(new TextDecoder().decode(z['data.json']));if(d.app!=='hudler-shoot-planner')throw new Error('This file isn’t a Shoot Planner file');d.state||={};d.state.shoots||=[];d.state.library||=[];d.state.locLib||=[];d.images||=[];return{z,d}}
 function normShoot(sh){sh.id||=uid();sh.name||='Imported shoot';sh.agent||='';sh.date||='';sh.notes||='';sh.locations||=[];sh.packed||={};sh.extras||=[];sh.currentShotId??=null;
- for(const l of sh.locations){l.id||=uid();l.name||='Location';for(const k of['address','parking','time','outfit'])l[k]||='';l.setups||=[];for(const st of l.setups){st.id||=uid();st.name||='Setup';st.shots||=[];st.shots=st.shots.map(t=>({...blankShot(),...t,id:t.id||uid(),images:t.images||[],props:t.props||[],dist:t.dist||['medium']}))}}return sh}
+ for(const l of sh.locations){l.id||=uid();l.name||='Location';for(const k of['address','parking','time','outfit'])l[k]||='';l.setups||=[];for(const st of l.setups){st.id||=uid();st.name||='Setup';st.shots||=[];st.images||=[];st.shots=st.shots.map(t=>({...blankShot(),...t,id:t.id||uid(),images:t.images||[],props:t.props||[],dist:t.dist||['medium']}))}}return sh}
 async function importPlannerFile(z,d){let imgs=0;for(const m of d.images){if(await iget('images',m.id))continue;const u=z[m.file];if(u){await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()});imgs++}}
  let added=0,replaced=0,poses=0,locs=0;for(const raw of d.state.shoots){const sh=normShoot(raw);const i=S.shoots.findIndex(x=>x.id===sh.id);if(i>-1){S.shoots[i]=sh;replaced++}else{S.shoots.unshift(sh);added++}}
  for(const p of d.state.library)if(!S.library.some(x=>x.id===p.id)){S.library.push(p);poses++}for(const l of d.state.locLib)if(!S.locLib.some(x=>x.id===l.id)){S.locLib.push(l);locs++}
@@ -551,8 +566,18 @@ async function buildPdf(sh,onProg){const d=pdfDoc(432,768);const{W,H,M}=d;const 
  const{props,ward}=packLists(sh);if(props.size||ward.size||sh.extras.length){d.page();d.y+=8;d.para('Packing list',{font:'F3',size:22,serif:true});
   const sec=(t,items)=>{if(!items.length)return;d.y+=10;d.para(t,{font:'F2',size:11});for(const[txt,sub]of items){d.need(30);const y0=d.y;d.rect(M,y0+6,10,10,0,true);d.para(txt,{x:M+20,w:W-2*M-20,size:11});if(sub)d.para(sub,{x:M+20,w:W-2*M-20,size:8.5,gray:.5})}};
   sec('Props',[...props.values()].map(v=>[v.text,'For '+[...new Set(v.from)].join(', ')]));sec('Wardrobe',[...ward.values()].map(v=>[v.text,[...new Set(v.from)].join(', ')]));sec('Extra items',sh.extras.map(e=>[e.text,'']))}
- // one page per shot
- for(let i=0;i<L.length;i++){const{t,l,st}=L[i];onProg&&onProg(i+1,L.length);d.page();const li=sh.locations.indexOf(l)+1;
+ // spot page (spot photos) before each spot's shots, then one page per shot
+ const spotPage=async({l,st})=>{d.page();const li=sh.locations.indexOf(l)+1;d.text(M,M+8,wrap(`${String(li).padStart(2,'0')} — ${l.name}`.toUpperCase(),8.5,W-2*M-80)[0]||'','F1',8.5,.45);d.text(W-M-tw('SPOT',8.5),M+8,'SPOT','F2',8.5,0);
+  const T=wrap(st.name,22,W-2*M,true),A=st.address?wrap(st.address,10.5,W-2*M):[],N=st.note?wrap(st.note,10.5,W-2*M):[];const textH=T.length*24+A.length*14+N.length*14+40;
+  const imgs=[];for(const id of st.images.slice(0,4))imgs.push(await pdfImage(id));const extra=imgs.slice(1).filter(Boolean);
+  const top=M+18,thumbH=extra.length?84:0,boxH=Math.max(220,H-M-textH-top-thumbH-(thumbH?8:0));
+  if(imgs[0]){d.rect(M,top,W-2*M,boxH,.94);d.image(imgs[0],M,top,W-2*M,boxH)}else{d.rect(M,top,W-2*M,boxH,.6,true);d.text(M+16,top+boxH/2,'Photo couldn’t be included (format not supported here)','F1',11,.5)}
+  if(extra.length){const tw2=(W-2*M-8*(extra.length-1))/extra.length;extra.forEach((im,k)=>{const x=M+k*(tw2+8);d.rect(x,top+boxH+8,tw2,thumbH,.94);d.image(im,x,top+boxH+8,tw2,thumbH)})}
+  d.y=top+boxH+thumbH+(thumbH?8:0)+8;for(const ln of T){d.y+=24;d.text(M,d.y,ln,'F3',22)}
+  if(A.length){const y0=d.y;for(const ln of A){d.y+=14;d.text(M,d.y,ln,'F1',10.5,.25)}d.link(M,y0+2,W-2*M,d.y-y0+4,`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(st.address)}`)}
+  for(const ln of N){d.y+=14;d.text(M,d.y,ln,'F1',10.5,.45)}d.y+=16;d.text(M,d.y,`${st.shots.length} shot${st.shots.length===1?'':'s'} here`,'F1',9,.45)};
+ const items=[];{let k=0;for(const l of sh.locations)for(const st of l.setups){if((st.images||[]).length)items.push({spot:true,l,st});for(const t of st.shots)items.push({t,l,st,i:k++})}}
+ for(const it of items){if(it.spot){await spotPage(it);continue}const{t,l,st,i}=it;onProg&&onProg(i+1,L.length);d.page();const li=sh.locations.indexOf(l)+1;
   const lab=`${String(li).padStart(2,'0')} — ${l.name} / ${st.name}`.toUpperCase();d.text(M,M+8,wrap(lab,8.5,W-2*M-80)[0]||'','F1',8.5,.45);const sn=`SHOT ${i+1} OF ${L.length}`;d.text(W-M-tw(sn,8.5),M+8,sn,'F2',8.5,0);
   const body=[];const T=wrap(t.title,22,W-2*M,true),P=wrap(t.prompt,11.5,W-2*M),V=t.variations?wrap('Capture: '+t.variations,10.5,W-2*M):[];
   const meta=[framing(t),t.props.length?'Props: '+t.props.join(', '):'',t.outfit?'Outfit: '+t.outfit:''].filter(Boolean).join('   ·   ');const MT=wrap(meta,9,W-2*M);
@@ -598,6 +623,8 @@ const A={
  'shot-down':d=>{const f=findShot(shoot(),d.id);move(f.st.shots,f.i,1);save();render()},
  'upload-shot':async d=>{const ids=await pickImages();if(!ids.length)return;const t=findShot(shoot(),d.id).t;t.images.push(...ids);save();if($('#mode').classList.contains('open'))drawMode();else render();toast(`Added ${ids.length} photo${ids.length>1?'s':''}`)},
  'lb-shot':d=>lightbox(findShot(shoot(),d.id).t.images),
+ 'lb-spot':d=>{const f=findSetup(shoot(),d.id)||(()=>{for(const l of S.locLib){const st=l.setups.find(s=>s.id===d.id);if(st)return{st}}})();if(f)lightbox(f.st.images,+(d.i||0))},
+ 'lb-spot-cur':()=>{const sh=shoot();const c=findShot(sh,sh.currentShotId);if(c&&(c.st.images||[]).length)lightbox(c.st.images)},
  'lb-pose':d=>lightbox(S.library.find(p=>p.id===d.id).images),
  'lb-mode':(d,el)=>{if(el.dataset.swiped){delete el.dataset.swiped;return}const sh=shoot();lightbox(findShot(sh,sh.currentShotId).t.images)},
  'lb-close':()=>{$('#lb').classList.remove('open');$('#lbtrack').innerHTML=''},
