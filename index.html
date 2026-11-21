@@ -311,22 +311,46 @@ function copyLoc(l,id){const c=clone(l);c.id=id||uid();delete c.savedId;for(cons
 function locText(l){return[l.name,l.address,l.parking,l.outfit,...l.setups.flatMap(s=>[s.name,s.address,s.note,...s.shots.map(t=>t.title)])].join(' ')}
 function vLibrary(){const tabs=[['poses',`Poses (${S.library.length})`],['locations',`Locations (${S.locLib.length})`]].map(([k,l])=>`<button class="tab" role="tab" aria-selected="${libTab===k}" data-act="lib-tab" data-tab="${k}">${l}</button>`).join('');
  return libTab==='locations'?vLocLib(tabs):vPoseLib(tabs)}
-function vLocLib(tabs){const q=norm(libQ);const list=S.locLib.filter(l=>!q||norm(locText(l)).includes(q));
+/* ---------- fuzzy search: typos, partial words, photo-shoot synonyms, ranked by field ---------- */
+const SYN=[['seated','sitting','sit','sits','chair','sofa','couch','bench','armchair','stool'],['standing','stand','stands','upright'],['walking','walk','walks','stroll','strolling','stride'],
+ ['leaning','lean','leans','against'],['couple','couples','pair','two','partner','partners','duo'],['doorway','door','doors','entry','entrance','stoop','steps','stairs','staircase','porch'],
+ ['laugh','laughing','laughs','smile','smiling','candid','joy'],['close','closeup','headshot','portrait','tight','face'],['wide','full','fullbody','environmental','establishing'],
+ ['kitchen','island','counter'],['window','windows','glass'],['coffee','mug','cup','latte'],['phone','cell','call','texting'],['keys','key'],['street','sidewalk','rowhome','rowhomes','brick'],
+ ['water','waterfront','harbor','pier','dock','railing'],['park','garden','grass','trees','greenery'],['looking','look','gaze','glance','away'],['hands','hand','arms','arm'],
+ ['detail','details','closeups','macro'],['vertical','portrait-orientation'],['horizontal','landscape']];
+const SYNMAP=new Map();SYN.forEach((g,i)=>g.forEach(w=>SYNMAP.set(w,i)));
+const fold=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const toks=s=>fold(s).split(/[^a-z0-9]+/).filter(Boolean);
+const stem=w=>w.length>5&&w.endsWith('ing')?w.slice(0,-3):w.length>4&&w.endsWith('es')?w.slice(0,-2):w.length>3&&w.endsWith('s')?w.slice(0,-1):w.length>4&&w.endsWith('ed')?w.slice(0,-2):w;
+function edits(a,b,max){if(Math.abs(a.length-b.length)>max)return max+1;const d=[];for(let i=0;i<=a.length;i++){d[i]=[i];for(let j=1;j<=b.length;j++)d[i][j]=i?0:j}
+ for(let i=1;i<=a.length;i++){let rowMin=1e9;for(let j=1;j<=b.length;j++){const c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);rowMin=Math.min(rowMin,d[i][j])}if(rowMin>max)return max+1}return d[a.length][b.length]}
+function termScore(q,w){if(q===w)return 1;const qs=stem(q),ws=stem(w);if(qs===ws)return .95;if(q.length>=2&&w.startsWith(q))return .9;
+ const gq=SYNMAP.get(q)??SYNMAP.get(qs),gw=SYNMAP.get(w)??SYNMAP.get(ws);if(gq!==undefined&&gq===gw)return .8;
+ const max=q.length>=8?2:q.length>=4?1:0;if(max){const e=Math.min(edits(q,w,max),edits(qs,ws,max));if(e<=max)return .75-.12*e}
+ if(q.length>=5&&w.includes(q))return .6;return 0}
+function fuzzy(items,query,fieldsOf){const qt=toks(query);if(!qt.length)return items;const out=[];
+ for(const it of items){const F=fieldsOf(it).map(([txt,wt])=>[toks(txt),wt]);let total=0,ok=true;
+  for(const q of qt){let best=0;for(const[ws,wt]of F)for(const w of ws){const s=termScore(q,w)*wt;if(s>best)best=s}if(!best){ok=false;break}total+=best}
+  if(ok)out.push([total,it])}
+ return out.sort((a,b)=>b[0]-a[0]).map(x=>x[1])}
+const poseFields=p=>[[p.title,3],[p.tags,2.5],[p.props.join(' '),1.6],[p.prompt,1.5],[p.variations,1.2],[p.outfit,.8],[framing(p),.8]];
+const locFields=l=>[[l.name,3],[l.setups.map(s=>s.name).join(' '),2.5],[l.setups.flatMap(s=>s.shots.map(t=>t.title)).join(' '),2],[l.address,1.5],[l.setups.map(s=>[s.address,s.note].join(' ')).join(' '),1.2],[[l.parking,l.outfit].join(' '),.8]];
+function vLocLib(tabs){const list=fuzzy(S.locLib,libQ,locFields);
  const tgt=libTarget&&libTarget.kind==='loc'&&S.shoots.find(s=>s.id===libTarget.shootId);
  return`${tgt?`<div class="note">Adding locations to <b>${esc(tgt.name)}</b>. Each one comes in with all its spots, shots and reference photos as the shoot’s own copy, with every shot set to to-do. <button class="btn ghost" data-act="lib-done" style="margin-top:8px">Done, back to shoot</button></div>`:''}
  <h1>Library</h1><div class="tabs" role="tablist" style="margin-top:18px">${tabs}</div>
- <input class="search" id="libq" type="search" placeholder="Search locations, spots, shots" value="${esc(libQ)}" style="margin-top:0">
+ <input class="search" id="libq" type="search" placeholder="Search locations, spots, shots — typos are fine" value="${esc(libQ)}" style="margin-top:0">
  <div class="mute small">${list.length} of ${S.locLib.length} saved locations</div>
  ${list.map(l=>{const shots=l.setups.flatMap(s=>s.shots);const fi=firstImg([l]);return`<div class="shoots"><div class="card" style="cursor:default"><div class="thumb">${fi?img(fi):'No photos'}</div><div><h2>${esc(l.name)}</h2>${l.address?`<div class="small">${esc(l.address)}</div>`:''}
  <div class="small mute" style="margin-top:4px">${l.setups.length} spot${l.setups.length===1?'':'s'} · ${shots.length} shot${shots.length===1?'':'s'}${l.setups.length?' — '+esc(l.setups.map(s=>s.name).join(', ')):''}</div>
  <div class="ctrl">${tgt?`<button class="btn solid" data-act="lib-add-loc" data-id="${l.id}">Add to shoot</button>`:''}<button class="btn ghost" data-act="edit-saved-loc" data-id="${l.id}">Details</button></div></div></div></div>`}).join('')}
  ${S.locLib.length?'':'<p class="empty">No saved locations yet. In any shoot’s itinerary, tap “Save to library” on a location. It’s saved with all its spots, shots and reference photos, ready to drop into future shoots.</p>'}`}
-function vPoseLib(tabs){const q=norm(libQ);const list=S.library.filter(p=>!q||norm([p.title,p.prompt,p.tags,p.props.join(' '),p.variations,p.outfit].join(' ')).includes(q));
+function vPoseLib(tabs){const list=fuzzy(S.library,libQ,poseFields);
  const tgt=libTarget&&libTarget.kind!=='loc'&&S.shoots.find(s=>s.id===libTarget.shootId);const tsu=tgt&&findSetup(tgt,libTarget.setupId);
  return`${tsu?`<div class="note">Adding to <b>${esc(tgt.name)}</b> → ${esc(tsu.l.name)} → ${esc(tsu.st.name)}. Tap “Add to shoot” on any pose. The shoot gets its own copy, so edits there won’t change the library. <button class="btn ghost" data-act="lib-done" style="margin-top:8px">Done, back to shoot</button></div>`:''}
  <div class="row" style="justify-content:space-between"><h1>Library</h1><div class="row"><button class="btn" data-act="bulk-poses">Add many photos</button><button class="btn solid" data-act="new-pose">New pose</button></div></div>
  <div class="tabs" role="tablist" style="margin-top:18px">${tabs}</div>
- <input class="search" id="libq" type="search" placeholder="Search poses, prompts, tags, props" value="${esc(libQ)}" style="margin-top:0">
+ <input class="search" id="libq" type="search" placeholder="Search poses — try “sitting”, “door”, “laugh”" value="${esc(libQ)}" style="margin-top:0">
  <div class="mute small">${list.length} of ${S.library.length} poses</div>
  <div class="grid">${list.map(p=>`<div class="shot"><div class="thumb" data-act="${p.images.length?'lb-pose':'edit-pose'}" data-id="${p.id}">${p.images.length?img(p.images[0])+(p.images.length>1?`<span class="count">${p.images.length} refs</span>`:''):'<span>No photo</span>'}</div><h4>${esc(p.title)}</h4><div class="stat">${esc(framing(p))}${p.tags?' · '+esc(p.tags):''}</div>
  <div class="ctrl">${tsu?`<button class="btn solid" data-act="lib-add" data-id="${p.id}">Add to shoot</button>`:''}<button class="btn ghost" data-act="edit-pose" data-id="${p.id}">Edit</button></div></div>`).join('')}</div>
@@ -686,7 +710,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  try{if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')&&!/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)){
   navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{OFFLINE_OK=true;if(ui.view==='settings')render()}).catch(()=>{})}}catch(e){}
  if(STANDALONE){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}})();
-window.__hh={get S(){return S},flush,buildBackup,restoreBackup,buildPdf,buildShootFile};
+window.__hh={get S(){return S},flush,fuzzy,buildBackup,restoreBackup,buildPdf,buildShootFile};
 }
 </script>
 </body>
