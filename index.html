@@ -251,14 +251,14 @@ function render(){setNav();const a=$('#app');
 
 function vHome(){const list=S.shoots.map(sh=>{const p=prog(allShots(sh));const first=allShots(sh).find(t=>t.images.length);
  return`<button class="card" data-act="open" data-id="${sh.id}"><div class="thumb">${first?img(first.images[0]):'No photos yet'}</div><div>${sh.sample?'<span class="sample">Sample</span>':''}<h2>${esc(sh.name)}</h2><div class="mute small">${esc([sh.agent,fmtDate(sh.date)].filter(Boolean).join(' · '))}</div><div class="small" style="margin-top:6px">${sh.locations.length} locations · ${p.d}/${p.n} shots done</div><div class="bar"><i style="width:${p.pct}%"></i></div></div></button>`}).join('');
- return`<div class="row" style="justify-content:space-between;margin-bottom:18px"><h1>Shoots</h1><button class="btn solid" data-act="new-shoot">New shoot</button></div><div class="shoots">${list||'<p class="empty">No shoots yet. Create one to start planning.</p>'}</div>`}
+ return`<div class="row" style="justify-content:space-between;margin-bottom:18px"><h1>Shoots</h1><div class="row"><button class="btn" data-act="import-shoot">Import shoot</button><button class="btn solid" data-act="new-shoot">New shoot</button></div></div><div class="shoots">${list||'<p class="empty">No shoots yet. Create one to start planning.</p>'}</div>`}
 
 function vShoot(){const sh=shoot();const p=prog(allShots(sh));const cur=sh.currentShotId&&findShot(sh,sh.currentShotId);
  const tabs=[['plan','Itinerary'],['shots','Shot list'],['pack','Packing']].map(([k,l])=>`<button class="tab" role="tab" aria-selected="${ui.tab===k}" data-act="tab" data-tab="${k}">${l}</button>`).join('');
  return`${sh.sample?'<span class="sample">Sample shoot — replace with your own</span>':''}<h1>${esc(sh.name)}</h1>
  <div class="mute" style="margin-top:8px">${esc([sh.agent,fmtDate(sh.date)].filter(Boolean).join(' · '))||'No agent or date yet'}</div>
  ${sh.notes?`<p style="max-width:62ch">${esc(sh.notes)}</p>`:''}
- <div class="row" style="margin-top:16px"><button class="btn ghost" data-act="edit-shoot">Edit details</button><button class="btn ghost" data-act="pdf">Export PDF</button><button class="btn ghost" data-act="dup-shoot">Duplicate</button><button class="btn ghost" data-act="del-shoot">Delete</button></div>
+ <div class="row" style="margin-top:16px"><button class="btn ghost" data-act="edit-shoot">Edit details</button><button class="btn ghost" data-act="pdf">Export PDF</button><button class="btn ghost" data-act="send-shoot">Send shoot</button><button class="btn ghost" data-act="dup-shoot">Duplicate</button><button class="btn ghost" data-act="del-shoot">Delete</button></div>
  <div style="margin-top:22px;max-width:520px"><button class="btn solid big" data-act="mode" ${p.n?'':'disabled'}>${cur?'Resume shoot mode — '+esc(cur.t.title):'Start shoot mode'}</button>
  <div class="small mute" style="margin-top:8px">${p.d} of ${p.n} shots done or skipped</div><div class="bar"><i style="width:${p.pct}%"></i></div></div>
  <div class="tabs" role="tablist">${tabs}</div>${ui.tab==='shots'?vShots(sh):ui.tab==='pack'?vPack(sh):vPlan(sh)}`}
@@ -332,6 +332,9 @@ function vSettings(){return`<h1>Settings & data</h1>
  <h2 style="margin-top:32px">Backup & restore</h2>
  <p class="small">A backup is one <b>.zip</b> file that holds every shoot, library pose, shot order and checklist state, plus all your reference photos as the original files you uploaded. Restoring replaces everything currently in this browser. Fonts aren’t included in backups.</p>
  <div class="row"><button class="btn solid" data-act="export">Download backup (.zip)</button><button class="btn" data-act="import">Restore from backup</button></div>
+ <h2 style="margin-top:32px">Share single shoots</h2>
+ <p class="small"><b>Send shoot</b> (on any shoot’s page) saves one shoot and its photos as a file. <b>Import shoot</b> (on the Shoots page or here) adds a shoot file <b>alongside</b> what’s already here and never wipes anything. If you already have that same shoot, you’ll be asked before it’s replaced with the newer copy. Use it to move a shoot from computer to phone, phone to phone, or to load a shoot Claude built from notes.</p>
+ <div class="row"><button class="btn" data-act="import-shoot">Import shoot</button></div>
  <h2 style="margin-top:32px">Where your data lives</h2>
  ${STANDALONE?`<div class="note small">You’re using the <b>Home Screen app</b>. Everything is saved <b>on this iPhone, inside this app</b>. It isn’t uploaded or synced, and it’s separate from anything you saved in Safari or in Claude. iPhone doesn’t clear it for going unused the way it can with Safari websites. <b>Deleting the app’s icon from your Home Screen deletes its data</b>, so keep recent backups in Files.<br><br>
  ${OFFLINE_OK?'The app opens and works with no signal once it’s been opened online once. Map links still need a signal.':'Offline support isn’t active yet. Open the app once with a signal, then close and reopen it.'}</div>`
@@ -480,6 +483,17 @@ async function restoreBackup(buf){const z=readZip(buf);if(!z['data.json'])throw 
  await iclear('images');for(const u of urls.values())URL.revokeObjectURL(u);urls.clear();
  for(const m of d.images){const u=z[m.file];if(u)await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()})}
  S=d.state;S.shoots||=[];S.library||=[];S.locLib||=[];ui={view:'home',shootId:null,tab:'plan'};await flush();return{shoots:S.shoots.length,images:d.images.length}}
+/* single-shoot file: same zip format as a backup, holding one shoot and only its photos */
+async function buildShootFile(sh){await flush();const ids=new Set();for(const t of allShots(sh))t.images.forEach(i=>ids.add(i));const files=[],meta=[];
+ for(const id of ids){const r=await iget('images',id);if(!r)continue;const file=`images/${id}.${extOf(r.type)}`;meta.push({id,file,type:r.type,name:r.name});files.push({name:file,data:new Uint8Array(r.buf)})}
+ files.unshift({name:'data.json',data:new TextEncoder().encode(JSON.stringify({app:'hudler-shoot-planner',kind:'shoot',version:1,exported:new Date().toISOString(),state:{shoots:[sh],library:[],locLib:[]},images:meta},null,1))});return makeZip(files)}
+function readPlannerZip(buf){const z=readZip(buf);if(!z['data.json'])throw new Error('This file isn’t a Shoot Planner file');const d=JSON.parse(new TextDecoder().decode(z['data.json']));if(d.app!=='hudler-shoot-planner')throw new Error('This file isn’t a Shoot Planner file');d.state||={};d.state.shoots||=[];d.state.library||=[];d.state.locLib||=[];d.images||=[];return{z,d}}
+function normShoot(sh){sh.id||=uid();sh.name||='Imported shoot';sh.agent||='';sh.date||='';sh.notes||='';sh.locations||=[];sh.packed||={};sh.extras||=[];sh.currentShotId??=null;
+ for(const l of sh.locations){l.id||=uid();l.name||='Location';for(const k of['address','parking','time','outfit'])l[k]||='';l.setups||=[];for(const st of l.setups){st.id||=uid();st.name||='Setup';st.shots||=[];st.shots=st.shots.map(t=>({...blankShot(),...t,id:t.id||uid(),images:t.images||[],props:t.props||[],dist:t.dist||['medium']}))}}return sh}
+async function importPlannerFile(z,d){let imgs=0;for(const m of d.images){if(await iget('images',m.id))continue;const u=z[m.file];if(u){await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()});imgs++}}
+ let added=0,replaced=0,poses=0,locs=0;for(const raw of d.state.shoots){const sh=normShoot(raw);const i=S.shoots.findIndex(x=>x.id===sh.id);if(i>-1){S.shoots[i]=sh;replaced++}else{S.shoots.unshift(sh);added++}}
+ for(const p of d.state.library)if(!S.library.some(x=>x.id===p.id)){S.library.push(p);poses++}for(const l of d.state.locLib)if(!S.locLib.some(x=>x.id===l.id)){S.locLib.push(l);locs++}
+ await flush();return{added,replaced,poses,locs,imgs}}
 async function getCap(name){try{if(!window.claude||!claude.use)return null;return await Promise.race([claude.use(name),new Promise(r=>setTimeout(()=>r(null),4000))])}catch(e){return null}}
 async function saveFile(blob,name,label){const mb=(blob.size/1048576).toFixed(1);const dl=await getCap('downloads');
  if(dl){try{await dl.save({filename:name,data:blob});toast(`${label} ready (${mb} MB)`)}catch(e){toast(e.code==='declined'?`${label} cancelled`:'Download failed: '+(e.message||e.code))}return}
@@ -600,6 +614,13 @@ const A={
    for(const f of fs){const[id]=await addImages([f]);S.library.unshift({...blankShot(),id:uid(),title:(f.name||'Pose').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').trim()||'Pose',images:[id],priority:'optional',tags:tag});n++;if(n%5===0||n===fs.length)toast(`Importing ${n}/${fs.length}…`)}
    await flush();libTab='poses';render();toast(`Added ${n} poses. Search “imported” to find them.`)};p.click()},
  pdf:()=>doPdf().catch(e=>toast('PDF failed: '+e.message)),
+ 'send-shoot':async()=>{try{const sh=shoot();toast('Preparing shoot file…');const blob=await buildShootFile(sh);await saveFile(blob,(sh.name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'shoot')+'-shoot.zip','Shoot file')}catch(e){toast('Couldn’t make shoot file: '+e.message)}},
+ 'import-shoot':()=>{const p=$('#pickzip');p.value='';p.onchange=async()=>{const f=p.files[0];if(!f)return;try{const{z,d}=readPlannerZip(await f.arrayBuffer());
+   const names=d.state.shoots.map(s=>s.name||'Untitled');const dup=d.state.shoots.filter(s=>S.shoots.some(x=>x.id===s.id)).map(s=>s.name);
+   if(d.kind!=='shoot'&&!names.length&&!d.state.library.length)throw new Error('No shoots found in this file');
+   const msg=dup.length?`Import ${names.length} shoot${names.length>1?'s':''}? You already have “${dup.join('”, “')}”, which will be replaced with the copy in this file, including its done/skipped marks.`:`Add ${names.length?'“'+names.join('”, “')+'”':'this file'} to your shoots? Nothing you already have will change.`;
+   if(!await ask(msg,dup.length?'Import and replace':'Import'))return;const r=await importPlannerFile(z,d);ui.view='home';render();
+   toast(`Imported: ${r.added} new${r.replaced?`, ${r.replaced} updated`:''}${r.poses?`, ${r.poses} poses`:''}${r.locs?`, ${r.locs} locations`:''}`)}catch(e){toast('Import failed: '+e.message)}};p.click()},
  'new-pose':()=>editPose({...blankShot(),title:'New pose',tags:'',_new:true}),
  'edit-pose':d=>editPose(S.library.find(p=>p.id===d.id)),
  pack:(d,el)=>{const sh=shoot();if(el.checked)sh.packed[d.key]=true;else delete sh.packed[d.key];save();render()},
@@ -638,7 +659,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  try{if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')&&!/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)){
   navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{OFFLINE_OK=true;if(ui.view==='settings')render()}).catch(()=>{})}}catch(e){}
  if(STANDALONE){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}})();
-window.__hh={get S(){return S},flush,buildBackup,restoreBackup,buildPdf};
+window.__hh={get S(){return S},flush,buildBackup,restoreBackup,buildPdf,buildShootFile};
 }
 </script>
 </body>

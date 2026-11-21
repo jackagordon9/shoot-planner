@@ -1,5 +1,5 @@
 // Offline support: serve the app from the device cache, refresh it in the background when online.
-const CACHE = 'shoot-planner-v3';
+const CACHE = 'shoot-planner-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
