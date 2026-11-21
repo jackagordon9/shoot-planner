@@ -66,6 +66,10 @@ main{max-width:1080px;margin:0 auto;padding:28px max(4vw,16px) 120px}
 .spotimg{width:76px;height:76px;padding:0;border:0;background:var(--soft);overflow:hidden;cursor:pointer;border-radius:2px}
 .spotimg img{width:100%;height:100%;object-fit:cover;display:block}
 .mtop .where[data-act]{cursor:pointer}.mtop .where .sp{color:#f2f2f2;text-decoration:underline;text-underline-offset:3px}
+#savebanner{position:fixed;left:0;right:0;top:0;z-index:90;background:#b00020;color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;font-size:14px;line-height:1.4}
+#savebanner button{margin-left:6px;background:#fff;color:#b00020;border:0;min-height:36px;padding:0 12px;border-radius:2px;font-weight:600}
+.imgfail{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;height:100%;min-height:60px;padding:6px;font-size:12px;line-height:1.3;color:var(--mute);background:var(--soft)}
+.mode .imgfail{background:#111;color:#999;font-size:15px}
 .spot .btn{min-height:38px;font-size:14px;padding:0 12px}
 .ctrl{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .setup{margin:18px 0 8px;padding-top:14px;border-top:1px dashed var(--line)}
@@ -187,8 +191,12 @@ main{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 {
 /* ---------- storage (IndexedDB on this device/browser) ---------- */
 const DBN='hudler-shoot-planner';let dbp=null;
-function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open(DBN,1);r.onupgradeneeded=()=>{const d=r.result;for(const s of['kv','images','fonts'])if(!d.objectStoreNames.contains(s))d.createObjectStore(s)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
-async function tx(store,mode,fn){const d=await db();return new Promise((res,rej)=>{const t=d.transaction(store,mode);const s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})}
+function db(){return dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open(DBN,2);r.onupgradeneeded=()=>{const d=r.result;for(const s of['kv','images','fonts','thumbs'])if(!d.objectStoreNames.contains(s))d.createObjectStore(s)};
+ r.onsuccess=()=>{const d=r.result;d.onclose=()=>{dbp=null};d.onversionchange=()=>{d.close();dbp=null};res(d)};r.onerror=()=>{dbp=null;rej(r.error)};r.onblocked=()=>{}}))}
+function txOnce(d,store,mode,fn){return new Promise((res,rej)=>{let t;try{t=d.transaction(store,mode)}catch(e){return rej(e)}const s=t.objectStore(store);let out;const r=fn(s);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error||new Error('Transaction aborted'))})}
+// iPhone Safari can drop the database connection ("Connection to Indexed Database server lost"); reopen it and retry instead of failing.
+async function tx(store,mode,fn){let last;for(let attempt=0;attempt<3;attempt++){try{return await txOnce(await db(),store,mode,fn)}catch(e){last=e;if(e&&e.name==='QuotaExceededError')throw e;
+  try{const d=await dbp;d&&d.close()}catch(_){}dbp=null;await new Promise(r=>setTimeout(r,150*(attempt+1)))}}throw last}
 const iget=(s,k)=>tx(s,'readonly',st=>st.get(k));
 const iput=(s,k,v)=>tx(s,'readwrite',st=>st.put(v,k));
 const idel=(s,k)=>tx(s,'readwrite',st=>st.delete(k));
@@ -207,17 +215,43 @@ let S={shoots:[],library:[],locLib:[]};
 let ui={view:'home',shootId:null,tab:'plan'};
 let saveT=null,storageOK=true;
 function save(){clearTimeout(saveT);saveT=setTimeout(flush,250)}
-async function flush(){clearTimeout(saveT);try{await iput('kv','state',S);await iput('kv','ui',ui);storageOK=true}catch(e){storageOK=false;toast('Could not save on this device: '+(e.message||e))}}
+async function flush(){clearTimeout(saveT);try{await iput('kv','state',S);await iput('kv','ui',ui);if(!storageOK){storageOK=true;saveBanner(false);toast('Saving is working again')}}
+ catch(e){storageOK=false;saveBanner(true,e);clearTimeout(retryT);retryT=setTimeout(flush,5000)}}
+let retryT=null;
+function saveBanner(on,e){let b=$('#savebanner');if(!on){b&&b.remove();return}if(!b){b=document.createElement('div');b.id='savebanner';document.body.appendChild(b)}
+ const full=e&&e.name==='QuotaExceededError';b.innerHTML=`<b>${full?'This phone is out of space for the app.':'Changes aren’t saving right now.'}</b> ${full?'Free up storage, then tap Try again.':'Keep this screen open and tap Try again. If it keeps failing, tap Download backup in Settings first, then close the app completely and reopen it.'} <button id="saveretry">Try again</button>`;
+ $('#saveretry').onclick=()=>{dbp=null;flush()}}
 
 /* ---------- images ---------- */
-const urls=new Map();
-async function addImages(files){const ids=[];for(const f of files){const id=uid();const buf=await f.arrayBuffer();await iput('images',id,{buf,type:f.type||'image/jpeg',name:f.name||'image',size:f.size,added:Date.now()});ids.push(id)}
-  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}return ids}
-async function imgURL(id){if(urls.has(id))return urls.get(id);const r=await iget('images',id);if(!r)return null;const u=URL.createObjectURL(new Blob([r.buf],{type:r.type}));urls.set(id,u);return u}
-function hydrate(root=document){for(const el of root.querySelectorAll('img[data-img]:not([src])')){imgURL(el.dataset.img).then(u=>{if(u)el.src=u;else el.alt='Image missing'})}}
-const img=(id,cls='')=>id?`<img data-img="${esc(id)}" alt="" class="${cls}" decoding="async">`:'';
-function pickImages(){return new Promise(res=>{const p=$('#pick');p.value='';p.onchange=async()=>{const f=[...p.files];res(f.length?await addImages(f):[])};p.click()})}
-async function gcImages(){const keep=new Set();const locs=[...S.shoots.flatMap(sh=>sh.locations),...S.locLib];for(const l of locs)for(const st of l.setups){(st.images||[]).forEach(i=>keep.add(i));for(const t of st.shots)t.images.forEach(i=>keep.add(i))}for(const p of S.library)p.images.forEach(i=>keep.add(i));for(const k of await ikeys('images'))if(!keep.has(k)){await idel('images',k);urls.delete(k)}}
+/* images: originals are stored untouched; the screen shows lightweight display copies ('sm' for lists, 'lg' for shoot mode / full screen),
+   made one at a time so big iPhone photos never exhaust Safari's image memory */
+const urls=new Map(),badImgs=new Set();const SIZES={sm:520,lg:1800};
+let thumbQ=Promise.resolve();const queue=fn=>{const p=thumbQ.then(fn,fn);thumbQ=p.catch(()=>{});return p};
+async function shrink(buf,type,max){const blob=new Blob([buf],{type});let src,w0,h0,cleanup=()=>{};
+ try{const b0=await createImageBitmap(blob);w0=b0.width;h0=b0.height;src=b0;cleanup=()=>b0.close&&b0.close()}
+ catch(e){const u=URL.createObjectURL(blob);const im=new Image();im.src=u;try{await im.decode()}catch(err){URL.revokeObjectURL(u);throw err}w0=im.naturalWidth;h0=im.naturalHeight;src=im;cleanup=()=>URL.revokeObjectURL(u)}
+ try{if(!w0||!h0)throw new Error('empty image');const k=Math.min(1,max/Math.max(w0,h0));const w=Math.max(1,Math.round(w0*k)),h=Math.max(1,Math.round(h0*k));
+  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(src,0,0,w,h);
+  const out=await new Promise((res,rej)=>c.toBlob(x=>x?res(x):rej(new Error('encode failed')),'image/jpeg',.85));c.width=c.height=0;return out}finally{cleanup()}}
+function makeThumbs(id){return queue(async()=>{if(await iget('thumbs',id+'|sm')&&await iget('thumbs',id+'|lg'))return true;const r=await iget('images',id);if(!r||!r.buf||!r.buf.byteLength)return false;
+ try{for(const[sz,max]of Object.entries(SIZES)){if(await iget('thumbs',id+'|'+sz))continue;const b=await shrink(r.buf,r.type,max);await iput('thumbs',id+'|'+sz,{buf:await b.arrayBuffer(),type:'image/jpeg'})}return true}
+ catch(e){console.warn('display copy failed',id,e);return false}})}
+async function addImages(files){const ids=[];let bad=0;for(const f of files){const id=uid();const buf=await f.arrayBuffer();if(!buf.byteLength){bad++;continue}
+  try{await iput('images',id,{buf,type:f.type||'image/jpeg',name:f.name||'image',size:f.size,added:Date.now()})}catch(e){bad++;saveBanner(true,e);continue}
+  if(await makeThumbs(id))ids.push(id);else{try{await idel('images',id)}catch(_){}bad++}}
+ if(bad)setTimeout(()=>toast(`${bad} photo${bad>1?'s':''} couldn’t be read and ${bad>1?'were':'was'}n’t added. If it’s in iCloud, open it in Photos first so it downloads, then add it again.`),300);
+ try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}return ids}
+async function imgURL(id,size='sm'){const key=id+'|'+size;if(urls.has(key))return urls.get(key);if(badImgs.has(id))return'bad';
+ let t=await iget('thumbs',key);if(!t){if(!await iget('images',id))return null;if(!await makeThumbs(id)){badImgs.add(id);return'bad'}t=await iget('thumbs',key);if(!t)return'bad'}
+ const u=URL.createObjectURL(new Blob([t.buf],{type:t.type}));urls.set(key,u);return u}
+function showFail(el,msg){if(el.dataset.fail)return;el.dataset.fail='1';const s=document.createElement('span');s.className='imgfail';s.textContent=msg;el.replaceWith(s)}
+function hydrate(root=document){for(const el of root.querySelectorAll('img[data-img]:not([src]):not([data-fail])')){imgURL(el.dataset.img,el.dataset.size||'sm').then(u=>{if(u&&u!=='bad')el.src=u;else showFail(el,u==='bad'?'Photo couldn’t be read':'Photo missing')}).catch(()=>showFail(el,'Photo didn’t load. Close and reopen the app'))}}
+document.addEventListener('error',e=>{const el=e.target;if(el&&el.tagName==='IMG'&&el.dataset&&el.dataset.img)showFail(el,'Photo couldn’t be shown')},true);
+const img=(id,cls='',size='sm')=>id?`<img data-img="${esc(id)}" data-size="${size}" alt="" class="${cls}" decoding="async">`:'';
+function pickImages(onStart){return new Promise(res=>{const p=$('#pick');p.value='';p.onchange=async()=>{const f=[...p.files];if(f.length&&onStart)onStart(f.length);if(f.length>3)toast(`Adding ${f.length} photos…`);res(f.length?await addImages(f):[])};p.click()})}
+// while photos are being added inside an editor, hold the Save/Cancel buttons so nothing closes mid-upload
+function busySheet(on,btn,n){for(const b of document.querySelectorAll('#sheet .actions button'))b.disabled=on;if(btn){btn.disabled=on;btn.innerHTML=on?`Adding ${n} photo${n>1?'s':''}…`:'＋<br>Add photos'}}
+async function gcImages(){const keep=new Set();const locs=[...S.shoots.flatMap(sh=>sh.locations),...S.locLib];for(const l of locs)for(const st of l.setups){(st.images||[]).forEach(i=>keep.add(i));for(const t of st.shots)t.images.forEach(i=>keep.add(i))}for(const p of S.library)p.images.forEach(i=>keep.add(i));for(const k of await ikeys('images'))if(!keep.has(k)){await idel('images',k)}for(const k of await ikeys('thumbs')){const id=String(k).split('|')[0];if(!keep.has(id)){await idel('thumbs',k);const u=urls.get(k);if(u){URL.revokeObjectURL(u);urls.delete(k)}}}}
 
 /* ---------- model helpers ---------- */
 const blankShot=()=>({id:uid(),title:'New shot',images:[],prompt:'',dist:['medium'],orient:'vertical',variations:'',props:[],outfit:'',priority:'must',status:'todo'});
@@ -397,7 +431,7 @@ function editLoc(l,isNew){const sh=shoot();openSheet(`<h2>${isNew?'New location'
  $('#ok').onclick=()=>{l.name=v('f-name')||'Location';l.address=v('f-addr');l.parking=v('f-park');l.time=v('f-time');l.outfit=v('f-out');if(isNew){l.setups.push({id:uid(),name:'Setup 1',shots:[]});sh.locations.push(l)}closeSheet();save();render()}}
 
 function imgEditor(el,list){const draw=()=>{el.innerHTML=list.map((id,i)=>`<figure><div class="thumb">${img(id)}</div><button type="button" class="x" data-i="${i}" aria-label="Remove photo">✕</button>${i?`<button type="button" class="mv" data-i="${i}" aria-label="Move photo earlier">←</button>`:''}</figure>`).join('')+`<button type="button" class="drop" data-add="1">＋<br>Add photos</button>`;hydrate(el);
-  el.querySelector('[data-add]').onclick=async()=>{list.push(...await pickImages());draw()};
+  el.querySelector('[data-add]').onclick=async()=>{const b=el.querySelector('[data-add]');const ids=await pickImages(n=>busySheet(true,b,n));busySheet(false);list.push(...ids);if(el.isConnected)draw()};
   for(const b of el.querySelectorAll('.x'))b.onclick=()=>{list.splice(+b.dataset.i,1);draw()};
   for(const b of el.querySelectorAll('.mv'))b.onclick=()=>{move(list,+b.dataset.i,-1);draw()}};draw();return list}
 function editSetup(found,isNew,loc){const sh=shoot();const st=found?found.st:{id:uid(),name:'',shots:[],images:[]};st.images||=[];
@@ -413,7 +447,7 @@ function editSetup(found,isNew,loc){const sh=shoot();const st=found?found.st:{id
 
 function shotForm(t,kind){let imgs=[...t.images];const sh=shoot();
  const draw=()=>{$('#f-imgs').innerHTML=imgs.map((id,i)=>`<figure><div class="thumb">${img(id)}</div><button type="button" class="x" data-i="${i}" aria-label="Remove photo">✕</button>${i?`<button type="button" class="mv" data-i="${i}" aria-label="Move photo earlier">←</button>`:''}</figure>`).join('')+`<button type="button" class="drop" id="f-add">＋<br>Add photos</button>`;hydrate($('#f-imgs'));
-  $('#f-add').onclick=async()=>{imgs.push(...await pickImages());draw()};
+  $('#f-add').onclick=async()=>{const b=$('#f-add');const ids=await pickImages(n=>busySheet(true,b,n));busySheet(false);imgs.push(...ids);if($('#f-imgs'))draw()};
   for(const b of $('#f-imgs').querySelectorAll('.x'))b.onclick=()=>{imgs.splice(+b.dataset.i,1);draw()};
   for(const b of $('#f-imgs').querySelectorAll('.mv'))b.onclick=()=>{move(imgs,+b.dataset.i,-1);draw()}};
  const segs=(name,opts,cur,multi)=>`<div class="seg">${opts.map(([k,l])=>`<label><input type="${multi?'checkbox':'radio'}" name="${name}" value="${k}" ${(multi?cur.includes(k):cur===k)?'checked':''}><span>${l}</span></label>`).join('')}</div>`;
@@ -474,7 +508,7 @@ function drawMode(){const sh=shoot();const list=modeList(sh);let i=list.findInde
  $('#mode').innerHTML=`<div class="mtop"><button class="ic" data-act="mode-close" aria-label="Close shoot mode">✕</button><div class="where" ${(st.images||[]).length?'data-act="lb-spot-cur"':''}><b>${esc(l.name)}</b>${(st.images||[]).length?`<span class="sp">${esc(st.name)} · spot photo${st.images.length>1?'s':''}</span>`:esc(st.name)}</div>
  <button class="ic" data-act="mode-list" aria-label="All shots and progress">☰</button><button class="ic" data-act="mode-filter" aria-pressed="${M.mustOnly}" aria-label="Show only remaining must-haves" title="Remaining must-haves">★</button></div>
  <div class="mprog"><span>This location ${LP.d}/${LP.n}</span><div class="bar"><i style="width:${P.pct}%"></i></div><span>Shoot ${P.d}/${P.n}</span></div>
- <div class="mimg" id="mimg" ${t.images.length?'data-act="lb-mode"':''}>${t.images.length?img(t.images[0])+(t.images.length>1?`<span class="more">1 of ${t.images.length} · tap</span>`:''):`<div class="none">No reference photo yet<br><button class="btn" data-act="upload-shot" data-id="${t.id}">Add photos</button></div>`}</div>
+ <div class="mimg" id="mimg" ${t.images.length?'data-act="lb-mode"':''}>${t.images.length?img(t.images[0],'','lg')+(t.images.length>1?`<span class="more">1 of ${t.images.length} · tap</span>`:''):`<div class="none">No reference photo yet<br><button class="btn" data-act="upload-shot" data-id="${t.id}">Add photos</button></div>`}</div>
  <div class="minfo"><div class="snum">Shot ${seq(sh).findIndex(x=>x.t.id===t.id)+1} of ${allS.length}</div><h2>${esc(t.title)}</h2>${t.prompt?`<p>${esc(t.prompt)}</p>`:''}${t.variations?`<p class="cap">Capture: ${esc(t.variations)}</p>`:''}<div class="tags"><span class="tag ${t.priority==='must'?'must':''}">${PRI[t.priority]}</span>${framing(t)?`<span class="tag">${esc(framing(t))}</span>`:''}${M.mustOnly?`<span class="tag">${left} must-haves left</span>`:''}</div>
  ${t.props.length||t.outfit?`<details><summary>Props, outfit</summary>${t.props.length?`<div>Props: ${esc(t.props.join(', '))}</div>`:''}${t.outfit?`<div>Outfit: ${esc(t.outfit)}</div>`:''}</details>`:''}</div>
  ${t.status!=='todo'?`<div class="statusline">${t.status==='done'?'✓ Marked done':'Skipped'}<button data-act="mode-reset">Undo</button></div>`:''}
@@ -492,7 +526,7 @@ function swipe(el,fn){if(!el)return;let x0=null,y0=0,moved=false;el.addEventList
  el.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){el.dataset.swiped='1';fn(dx<0?1:-1)}});}
 
 /* ---------- lightbox ---------- */
-function lightbox(ids,start=0){const tr=$('#lbtrack');tr.innerHTML=ids.map(id=>`<div>${img(id)}</div>`).join('');hydrate(tr);$('#lb').classList.add('open');
+function lightbox(ids,start=0){const tr=$('#lbtrack');tr.innerHTML=ids.map(id=>`<div>${img(id,'','lg')}</div>`).join('');hydrate(tr);$('#lb').classList.add('open');
  const upd=()=>{$('#lbcnt').textContent=ids.length>1?`${Math.round(tr.scrollLeft/tr.clientWidth)+1} of ${ids.length} · swipe`:''};tr.onscroll=upd;requestAnimationFrame(()=>{tr.scrollLeft=start*tr.clientWidth;upd()})}
 
 /* ---------- toast ---------- */
@@ -519,7 +553,7 @@ const extOf=t=>({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image
 async function buildBackup(){await flush();const files=[],meta=[];for(const id of await ikeys('images')){const r=await iget('images',id);const file=`images/${id}.${extOf(r.type)}`;meta.push({id,file,type:r.type,name:r.name});files.push({name:file,data:new Uint8Array(r.buf)})}
  files.unshift({name:'data.json',data:new TextEncoder().encode(JSON.stringify({app:'hudler-shoot-planner',version:1,exported:new Date().toISOString(),state:S,images:meta},null,1))});return makeZip(files)}
 async function restoreBackup(buf){const z=readZip(buf);if(!z['data.json'])throw new Error('This zip isn’t a Shoot Planner backup');const d=JSON.parse(new TextDecoder().decode(z['data.json']));if(d.app!=='hudler-shoot-planner')throw new Error('This zip isn’t a Shoot Planner backup');
- await iclear('images');for(const u of urls.values())URL.revokeObjectURL(u);urls.clear();
+ await iclear('images');await iclear('thumbs');for(const u of urls.values())URL.revokeObjectURL(u);urls.clear();badImgs.clear();
  for(const m of d.images){const u=z[m.file];if(u)await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()})}
  S=d.state;S.shoots||=[];S.library||=[];S.locLib||=[];ui={view:'home',shootId:null,tab:'plan'};await flush();return{shoots:S.shoots.length,images:d.images.length}}
 /* single-shoot file: same zip format as a backup, holding one shoot and only its photos */
@@ -551,7 +585,7 @@ function pstr(s){let o='';for(const ch of String(s??'')){let c=WIN[ch]??ch.codeP
 const lb=s=>{const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i)&255;return u};
 function tw(s,size,serif){let w=0;for(const c of String(s)){w+=' il.,\'|!:;tfjI'.includes(c)?.28:'mwMW@'.includes(c)?.85:c>='A'&&c<='Z'?.68:c>='0'&&c<='9'?.556:.52}return w*size*(serif?.93:1)}
 function wrap(s,size,maxW,serif){const out=[];for(const para of String(s||'').split('\n')){let line='';for(const word of para.split(/\s+/)){if(!word)continue;const t=line?line+' '+word:word;if(tw(t,size,serif)>maxW&&line){out.push(line);line=word}else line=t}if(line)out.push(line)}return out}
-async function pdfImage(id,max=1400){try{const r=await iget('images',id);if(!r)return null;const bmp=await createImageBitmap(new Blob([r.buf],{type:r.type}));const k=Math.min(1,max/Math.max(bmp.width,bmp.height));const w=Math.round(bmp.width*k),h=Math.round(bmp.height*k);
+async function pdfImage(id,max=1400){try{await makeThumbs(id);const r=await iget('thumbs',id+'|lg')||await iget('images',id);if(!r)return null;const bmp=await createImageBitmap(new Blob([r.buf],{type:r.type}));const k=Math.min(1,max/Math.max(bmp.width,bmp.height));const w=Math.round(bmp.width*k),h=Math.round(bmp.height*k);
  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(bmp,0,0,w,h);const b=await new Promise(res=>c.toBlob(res,'image/jpeg',.82));return{w,h,bytes:new Uint8Array(await b.arrayBuffer())}}catch(e){return null}}
 function pdfDoc(W,H){const pages=[];let pg=null;const M=26;
  const doc={W,H,M,pages,y:0,
@@ -662,7 +696,7 @@ const A={
    const c=clone(p);delete c.tags;f.st.shots.push({...blankShot(),...c,id:uid(),libraryId:p.id,status:'todo'});save();toast(`Added “${p.title}” to ${f.st.name}`)},
  'lib-done':()=>{ui.shootId=libTarget.shootId;ui.view='shoot';ui.tab=libTarget.kind==='loc'?'plan':'shots';libTarget=null;save();render();scrollTo(0,0)},
  'bulk-poses':()=>{const p=$('#pick');p.value='';p.onchange=async()=>{const fs=[...p.files];if(!fs.length)return;const tag='imported '+new Date().toISOString().slice(0,10);let n=0;
-   for(const f of fs){const[id]=await addImages([f]);S.library.unshift({...blankShot(),id:uid(),title:(f.name||'Pose').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').trim()||'Pose',images:[id],priority:'optional',tags:tag});n++;if(n%5===0||n===fs.length)toast(`Importing ${n}/${fs.length}…`)}
+   for(const f of fs){const[id]=await addImages([f]);if(!id)continue;S.library.unshift({...blankShot(),id:uid(),title:(f.name||'Pose').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').trim()||'Pose',images:[id],priority:'optional',tags:tag});n++;if(n%5===0||n===fs.length)toast(`Importing ${n}/${fs.length}…`)}
    await flush();libTab='poses';render();toast(`Added ${n} poses. Search “imported” to find them.`)};p.click()},
  pdf:()=>doPdf().catch(e=>toast('PDF failed: '+e.message)),
  'send-shoot':async()=>{try{const sh=shoot();toast('Preparing shoot file…');const blob=await buildShootFile(sh);await saveFile(blob,(sh.name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'shoot')+'-shoot.zip','Shoot file')}catch(e){toast('Couldn’t make shoot file: '+e.message)}},
@@ -710,7 +744,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  try{if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')&&!/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)){
   navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{OFFLINE_OK=true;if(ui.view==='settings')render()}).catch(()=>{})}}catch(e){}
  if(STANDALONE){try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}})();
-window.__hh={get S(){return S},flush,fuzzy,buildBackup,restoreBackup,buildPdf,buildShootFile};
+window.__hh={get S(){return S},flush,fuzzy,dropDb:()=>dbp&&dbp.then(d=>d.close()),buildBackup,restoreBackup,buildPdf,buildShootFile};
 }
 </script>
 </body>
