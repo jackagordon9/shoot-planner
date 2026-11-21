@@ -394,7 +394,7 @@ function vSettings(){return`<h1>Settings & data</h1>
  <h2 style="margin-top:28px">Fonts</h2><p class="mute small">The Compass fonts aren’t included. Load your own font files below. They’re stored in this browser only and are used everywhere in the tool. Until then, titles use your device’s standard serif and body text uses the system sans.</p>
  ${[['serif','Compass Serif (titles)'],['sans','Compass Sans — regular'],['sansb','Compass Sans — medium/bold (optional)']].map(([k,l])=>`<div class="check" style="cursor:default"><span>${l}<small id="font-${k}">Checking…</small></span><button class="btn ghost" data-act="font" data-role="${k}">Load file</button><button class="ic" data-act="font-del" data-role="${k}" aria-label="Remove font">✕</button></div>`).join('')}
  <h2 style="margin-top:32px">Backup & restore</h2>
- <p class="small">A backup is one <b>.zip</b> file that holds every shoot, library pose, shot order and checklist state, plus all your reference photos as the original files you uploaded. Restoring replaces everything currently in this browser. Fonts aren’t included in backups.</p>
+ <p class="small">A backup is saved as one or more <b>.zip</b> parts (about 35 MB each, so big photo collections don’t crash the phone). Together they hold every shoot, library pose, shot order and checklist state, plus all your reference photos as the original files you uploaded. Restoring replaces everything currently in the app. Select all the parts at once when restoring. Fonts aren’t included in backups.</p>
  <div class="row"><button class="btn solid" data-act="export">Download backup (.zip)</button><button class="btn" data-act="import">Restore from backup</button></div>
  <h2 style="margin-top:32px">Share single shoots</h2>
  <p class="small"><b>Send shoot</b> (on any shoot’s page) saves one shoot and its photos as a file. <b>Import shoot</b> (on the Shoots page or here) adds a shoot file <b>alongside</b> what’s already here and never wipes anything. If you already have that same shoot, you’ll be asked before it’s replaced with the newer copy. Use it to move a shoot from computer to phone, phone to phone, or to load a shoot Claude built from notes.</p>
@@ -552,10 +552,15 @@ function readZip(buf){const dv=new DataView(buf);let p=buf.byteLength-22;while(p
 const extOf=t=>({'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/heic':'heic','image/heif':'heif','image/gif':'gif'}[t]||'img');
 async function buildBackup(){await flush();const files=[],meta=[];for(const id of await ikeys('images')){const r=await iget('images',id);const file=`images/${id}.${extOf(r.type)}`;meta.push({id,file,type:r.type,name:r.name});files.push({name:file,data:new Uint8Array(r.buf)})}
  files.unshift({name:'data.json',data:new TextEncoder().encode(JSON.stringify({app:'hudler-shoot-planner',version:1,exported:new Date().toISOString(),state:S,images:meta},null,1))});return makeZip(files)}
-async function restoreBackup(buf){const z=readZip(buf);if(!z['data.json'])throw new Error('This zip isn’t a Shoot Planner backup');const d=JSON.parse(new TextDecoder().decode(z['data.json']));if(d.app!=='hudler-shoot-planner')throw new Error('This zip isn’t a Shoot Planner backup');
- await iclear('images');await iclear('thumbs');for(const u of urls.values())URL.revokeObjectURL(u);urls.clear();badImgs.clear();
- for(const m of d.images){const u=z[m.file];if(u)await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()})}
- S=d.state;S.shoots||=[];S.library||=[];S.locLib||=[];ui={view:'home',shootId:null,tab:'plan'};await flush();return{shoots:S.shoots.length,images:d.images.length}}
+async function restoreParts(fs){let first=null,imgs=0,total=1;const seen=new Set();
+ for(const f of fs){toast(`Restoring ${f.name}…`);const{z,d}=readPlannerZip(await f.arrayBuffer());
+  if(!first){if(d.kind==='shoot')throw new Error('That’s a single-shoot file. Use Import shoot instead (it doesn’t wipe anything).');first=d;
+   await iclear('images');await iclear('thumbs');for(const u of urls.values())URL.revokeObjectURL(u);urls.clear();badImgs.clear();
+   S=d.state;S.shoots||=[];S.library||=[];S.locLib||=[];ui={view:'home',shootId:null,tab:'plan'};await flush()}
+  total=d.parts||1;seen.add(d.part||1);
+  for(const m of d.images){const u=z[m.file];if(u){await iput('images',m.id,{buf:u.slice().buffer,type:m.type,name:m.name,size:u.length,added:Date.now()});imgs++}}}
+ return{shoots:S.shoots.length,images:imgs,missing:Math.max(0,total-seen.size),total}}
+async function restoreBackup(buf){return restoreParts([new File([buf],'backup.zip')])}
 /* single-shoot file: same zip format as a backup, holding one shoot and only its photos */
 async function buildShootFile(sh){await flush();const ids=new Set();for(const t of allShots(sh))t.images.forEach(i=>ids.add(i));for(const l of sh.locations)for(const st of l.setups)(st.images||[]).forEach(i=>ids.add(i));const files=[],meta=[];
  for(const id of ids){const r=await iget('images',id);if(!r)continue;const file=`images/${id}.${extOf(r.type)}`;meta.push({id,file,type:r.type,name:r.name});files.push({name:file,data:new Uint8Array(r.buf)})}
@@ -568,12 +573,22 @@ async function importPlannerFile(z,d){let imgs=0;for(const m of d.images){if(awa
  for(const p of d.state.library)if(!S.library.some(x=>x.id===p.id)){S.library.push(p);poses++}for(const l of d.state.locLib)if(!S.locLib.some(x=>x.id===l.id)){S.locLib.push(l);locs++}
  await flush();return{added,replaced,poses,locs,imgs}}
 async function getCap(name){try{if(!window.claude||!claude.use)return null;return await Promise.race([claude.use(name),new Promise(r=>setTimeout(()=>r(null),4000))])}catch(e){return null}}
-async function saveFile(blob,name,label){const mb=(blob.size/1048576).toFixed(1);const dl=await getCap('downloads');
- if(dl){try{await dl.save({filename:name,data:blob});toast(`${label} ready (${mb} MB)`)}catch(e){toast(e.code==='declined'?`${label} cancelled`:'Download failed: '+(e.message||e.code))}return}
+async function saveFile(blob,name,label,cta){const mb=(blob.size/1048576).toFixed(1);const dl=await getCap('downloads');
+ if(dl){try{await dl.save({filename:name,data:blob});toast(`${label} ready (${mb} MB)`);return'saved'}catch(e){toast(e.code==='declined'?`${label} cancelled`:'Download failed: '+(e.message||e.code));return e.code==='declined'?'cancelled':'failed'}}
  const file=new File([blob],name,{type:blob.type||'application/octet-stream'});
- openSheet(`<h2>${esc(label)} ready</h2><p class="small">${esc(name)} · ${mb} MB</p><p class="small mute">On iPhone, choose “Save to Files” in the share sheet, then pick a folder.</p><div class="actions"><button class="btn" data-act="sheet-cancel">Close</button><button class="btn solid grow" id="savefile">Save file</button></div>`);
- $('#savefile').onclick=async()=>{try{if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:name});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove()}closeSheet();toast(`${label} saved`)}catch(e){if(e.name!=='AbortError')toast('Couldn’t save: '+e.message)}}}
-async function doExport(){toast('Preparing backup…');const blob=await buildBackup();await saveFile(blob,`hudler-shoot-planner-backup-${new Date().toISOString().slice(0,10)}.zip`,'Backup')}
+ return new Promise(resolve=>{openSheet(`<h2>${esc(label)} ready</h2><p class="small">${esc(name)} · ${mb} MB</p><p class="small mute">On iPhone, choose “Save to Files” in the share sheet, then pick a folder.</p><div class="actions"><button class="btn" data-act="sheet-cancel">${cta?'Stop':'Close'}</button><button class="btn solid grow" id="savefile">${cta||'Save file'}</button></div>`,()=>resolve('cancelled'));
+  $('#savefile').onclick=async()=>{try{if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:name});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove()}sheetClose=null;closeSheet();toast(`${label} saved`);resolve('saved')}catch(e){if(e.name!=='AbortError')toast('Couldn’t save: '+e.message)}}})}
+/* backups and shoot files are saved in parts so no step holds more than ~35 MB of photos in memory (iPhone Safari crashes otherwise) */
+const PART_BYTES=35*1048576;
+async function planParts(ids){const parts=[[]];let cur=0;for(const id of ids){const r=await iget('images',id);if(!r||!r.buf)continue;const n=r.buf.byteLength;if(cur&&cur+n>PART_BYTES){parts.push([]);cur=0}parts[parts.length-1].push(id);cur+=n}return parts}
+async function buildPart(ids,base,i,n,set){const files=[],meta=[];for(const id of ids){const r=await iget('images',id);if(!r)continue;const file=`images/${id}.${extOf(r.type)}`;meta.push({id,file,type:r.type,name:r.name});files.push({name:file,data:new Uint8Array(r.buf)})}
+ files.unshift({name:'data.json',data:new TextEncoder().encode(JSON.stringify({...base,part:i,parts:n,set,exported:new Date().toISOString(),images:meta},null,1))});return makeZip(files)}
+async function exportInParts(ids,base,fname,label){await flush();toast('Preparing…');const parts=await planParts(ids);const n=parts.length,set=uid();
+ for(let i=0;i<n;i++){if(n>1)toast(`Preparing part ${i+1} of ${n}…`);let blob=await buildPart(parts[i],base,i+1,n,set);
+  const r=await saveFile(blob,n>1?`${fname}-part${i+1}of${n}.zip`:`${fname}.zip`,n>1?`${label} part ${i+1} of ${n}`:label,n>1&&i<n-1?'Save, then next part':null);blob=null;
+  if(r!=='saved'){if(n>1&&i>0)toast(`Stopped after part ${i} of ${n}. Restoring needs all ${n} parts for every photo.`);return}}
+ if(n>1)toast(`${label}: all ${n} parts saved. Keep them together.`)}
+async function doExport(){await exportInParts(await ikeys('images'),{app:'hudler-shoot-planner',kind:'backup',version:1,state:S},`hudler-shoot-planner-backup-${new Date().toISOString().slice(0,10)}`,'Backup')}
 
 /* ---------- route ---------- */
 function routeURL(sh){const a=sh.locations.map(l=>l.address).filter(Boolean);if(a.length<2)return null;const e=encodeURIComponent;
@@ -699,13 +714,16 @@ const A={
    for(const f of fs){const[id]=await addImages([f]);if(!id)continue;S.library.unshift({...blankShot(),id:uid(),title:(f.name||'Pose').replace(/\.[^.]+$/,'').replace(/[_-]+/g,' ').trim()||'Pose',images:[id],priority:'optional',tags:tag});n++;if(n%5===0||n===fs.length)toast(`Importing ${n}/${fs.length}…`)}
    await flush();libTab='poses';render();toast(`Added ${n} poses. Search “imported” to find them.`)};p.click()},
  pdf:()=>doPdf().catch(e=>toast('PDF failed: '+e.message)),
- 'send-shoot':async()=>{try{const sh=shoot();toast('Preparing shoot file…');const blob=await buildShootFile(sh);await saveFile(blob,(sh.name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'shoot')+'-shoot.zip','Shoot file')}catch(e){toast('Couldn’t make shoot file: '+e.message)}},
- 'import-shoot':()=>{const p=$('#pickzip');p.value='';p.onchange=async()=>{const f=p.files[0];if(!f)return;try{const{z,d}=readPlannerZip(await f.arrayBuffer());
+ 'send-shoot':async()=>{try{const sh=shoot();await flush();const ids=new Set();for(const t of allShots(sh))t.images.forEach(i=>ids.add(i));for(const l of sh.locations)for(const st of l.setups)(st.images||[]).forEach(i=>ids.add(i));
+   await exportInParts([...ids],{app:'hudler-shoot-planner',kind:'shoot',version:1,state:{shoots:[sh],library:[],locLib:[]}},(sh.name.replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'shoot')+'-shoot','Shoot file')}catch(e){toast('Couldn’t make shoot file: '+e.message)}},
+ 'import-shoot':()=>{const p=$('#pickzip');p.value='';p.multiple=true;p.onchange=async()=>{const fs=[...p.files];if(!fs.length)return;try{const{d}=readPlannerZip(await fs[0].arrayBuffer());
    const names=d.state.shoots.map(s=>s.name||'Untitled');const dup=d.state.shoots.filter(s=>S.shoots.some(x=>x.id===s.id)).map(s=>s.name);
-   if(d.kind!=='shoot'&&!names.length&&!d.state.library.length)throw new Error('No shoots found in this file');
+   if(!names.length&&!d.state.library.length)throw new Error('No shoots found in this file');
    const msg=dup.length?`Import ${names.length} shoot${names.length>1?'s':''}? You already have “${dup.join('”, “')}”, which will be replaced with the copy in this file, including its done/skipped marks.`:`Add ${names.length?'“'+names.join('”, “')+'”':'this file'} to your shoots? Nothing you already have will change.`;
-   if(!await ask(msg,dup.length?'Import and replace':'Import'))return;const r=await importPlannerFile(z,d);ui.view='home';render();
-   toast(`Imported: ${r.added} new${r.replaced?`, ${r.replaced} updated`:''}${r.poses?`, ${r.poses} poses`:''}${r.locs?`, ${r.locs} locations`:''}`)}catch(e){toast('Import failed: '+e.message)}};p.click()},
+   if(!await ask(msg,dup.length?'Import and replace':'Import'))return;let tot={added:0,replaced:0,poses:0,locs:0,imgs:0},parts=d.parts||1;const seen=new Set();
+   for(const f of fs){if(fs.length>1)toast(`Importing ${f.name}…`);const x=readPlannerZip(await f.arrayBuffer());seen.add(x.d.part||1);parts=x.d.parts||parts;const r=await importPlannerFile(x.z,x.d);for(const k in tot)tot[k]+=r[k]}
+   ui.view='home';render();const miss=Math.max(0,parts-seen.size);
+   toast(`Imported${tot.added?`: ${tot.added} new`:''}${tot.replaced&&!tot.added?': updated':''}, ${tot.imgs} photos${miss?`. ${miss} more part${miss>1?'s':''} still to import`:''}`)}catch(e){toast('Import failed: '+e.message)}};p.click()},
  'new-pose':()=>editPose({...blankShot(),title:'New pose',tags:'',_new:true}),
  'edit-pose':d=>editPose(S.library.find(p=>p.id===d.id)),
  pack:(d,el)=>{const sh=shoot();if(el.checked)sh.packed[d.key]=true;else delete sh.packed[d.key];save();render()},
@@ -720,8 +738,9 @@ const A={
  'mode-jump':d=>{const sh=shoot();sh.currentShotId=d.id;if(M.mustOnly&&!modeList(sh).some(x=>x.t.id===d.id))M.mustOnly=false;closeSheet();save();drawMode()},
  'sheet-cancel':()=>closeSheet(),
  export:()=>doExport().catch(e=>toast('Backup failed: '+e.message)),
- import:()=>{const p=$('#pickzip');p.value='';p.onchange=async()=>{const f=p.files[0];if(!f)return;if(!await ask('Replace everything in this browser with this backup?','Restore'))return;
-   try{const r=await restoreBackup(await f.arrayBuffer());render();toast(`Restored ${r.shoots} shoots and ${r.images} photos`)}catch(e){toast('Restore failed: '+e.message)}};p.click()},
+ import:()=>{const p=$('#pickzip');p.value='';p.multiple=true;p.onchange=async()=>{const fs=[...p.files];if(!fs.length)return;
+   if(!await ask(fs.length>1?`Replace everything in this app with this backup (${fs.length} parts)?`:'Replace everything in this app with this backup?','Restore'))return;
+   try{const r=await restoreParts(fs);render();toast(r.missing?`Restored ${r.shoots} shoots and ${r.images} photos. ${r.missing} of ${r.total} parts still to restore: use Import shoot on the remaining parts.`:`Restored ${r.shoots} shoots and ${r.images} photos`)}catch(e){toast('Restore failed: '+e.message)}};p.click()},
  font:d=>{const p=$('#pickfont');p.value='';p.onchange=async()=>{const f=p.files[0];if(!f)return;try{const buf=await f.arrayBuffer();const fam=d.role==='serif'?'Compass Serif':'Compass Sans';const ff=new FontFace(fam,buf,{weight:d.role==='sansb'?'600':'400'});await ff.load();document.fonts.add(ff);
    await iput('fonts',d.role,{buf,name:f.name});toast('Font loaded: '+f.name);fillStorage()}catch(e){toast('That file couldn’t be read as a font')}};p.click()},
  'font-del':async d=>{await idel('fonts',d.role);toast('Font removed. It goes away fully after you reopen the tool.');fillStorage()},
